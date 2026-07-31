@@ -8,8 +8,13 @@ metadata:
 data:
   ENV: dev
   PORT: "8080"
-  REDIS_HOST: auth-redis.sweetrpg-support.svc.cluster.local
+  # Shared "redis" instance in sweetrpg-support, not a dedicated instance for this app - see
+  # docs/frontend-conventions.md's "Shared sweetrpg-support Redis instance" section in
+  # sweetrpg/platform for the full DB-index registry. DB 2 is this app's shared session store;
+  # every other frontend reading that session must use this same host/DB, not a different one.
+  REDIS_HOST: redis.sweetrpg-support.svc.cluster.local
   REDIS_PORT: "6379"
+  REDIS_DB: "2"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
   USERS_API_URL: http://api-v1.sweetrpg-user.svc.cluster.local:8000
   # Unlike catalog-web/admin-web, this app's Ingress does NOT strip the /auth prefix (see
