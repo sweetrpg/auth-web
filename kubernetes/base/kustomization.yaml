@@ -7,6 +7,3 @@ resources:
   - configmaps.yaml
   - deployment.yaml
   - service.yaml
-  - redis-service-account.yaml
-  - redis-deployment.yaml
-  - redis-service.yaml
