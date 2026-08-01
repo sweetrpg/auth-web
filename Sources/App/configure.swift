@@ -9,6 +9,8 @@ public func configure(_ app: Application) async throws {
   app.http.server.configuration.hostname = "0.0.0.0"
   app.http.server.configuration.port = Environment.get("PORT").flatMap(Int.init) ?? 8080
 
+  app.middleware.use(SentryMiddleware())
+
   // Shared cookie name, unlike every other frontend's own per-app session - this app is the sole
   // writer of the session every other frontend reads. See design.md's "Shared session across
   // every frontend" decision in platform's add-user-api-authn-authz change. Vapor's default
