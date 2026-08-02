@@ -8,10 +8,12 @@ metadata:
 data:
   ENV: local
   PORT: "8080"
-  REDIS_HOST: auth-redis.sweetrpg-support.svc.cluster.local
+  # This app's own dedicated Redis instance - see that file's comment in the dev overlay.
+  REDIS_HOST: redis.sweetrpg-auth.svc.cluster.local
   REDIS_PORT: "6379"
+  REDIS_DB: "0"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
-  USERS_API_URL: http://api-v1.sweetrpg-user.svc.cluster.local:8000
+  USERS_API_URL: http://api-v1.sweetrpg-users.svc.cluster.local:8080
   # Shared host behind the single traefik-tailscale front door (see
   # support/config/K8s/traefik/overlays/minikube), same convention as the dev overlay's
   # dev.sweetrpg.com.

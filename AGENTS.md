@@ -19,8 +19,10 @@ bundled into `main-web`, `users-web`, or `admin-web`.
 
 - **users-api**: called once at login, `POST /authz/check`, to establish the session's verified
   roles server-side - not a local unverified token decode.
-- **Redis**: its own dedicated instance (`kubernetes/base/redis-*.yaml`), deployed alongside this
-  app in the `sweetrpg-support` namespace - not shared with any other service's Redis instance.
+- **Redis**: this app's own dedicated instance, `redis.sweetrpg-auth.svc.cluster.local`, deployed
+  alongside it in `sweetrpg-auth`. It doubles as the suite-wide session store - see
+  `sweetrpg/platform`'s `docs/frontend-conventions.md` ("Per-namespace Redis instances") for how
+  other frontends read it cross-namespace.
 - **Every other frontend** reads the session this app writes (same cookie name, same Redis
   instance) but never writes to it - they only ever redirect an unauthenticated visitor to this
   app's `/auth/login?return_to=<path>`.
