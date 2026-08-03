@@ -41,5 +41,9 @@ public func configure(_ app: Application) async throws {
   // No AuthRequiredMiddleware here, unlike catalog-web/admin-web: this app's whole job is being
   // reachable while unauthenticated, so it can establish a session in the first place.
 
+  // Gates only /auth/login - see MaintenanceModeMiddleware's doc comment for why the callback
+  // and logout routes are deliberately excluded.
+  app.middleware.use(MaintenanceModeMiddleware())
+
   try routes(app)
 }
