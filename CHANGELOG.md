@@ -1,4 +1,27 @@
 
+## 0.2.0 - 2026-08-04
+
+### Added
+- Gate /auth/login behind admin-api maintenance mode
+- Add guarded Sentry error reporting
+
+
+### Documentation
+- Document the Auth0 application setup
+
+
+### Fixed
+- Point auth-web at the shared sweetrpg-support Redis
+- Mount redis-auth secret so REDIS_PASS reaches the app
+- Give login failures a specific, safe reason code instead of a flag
+
+
+## 0.1.0 - 2026-08-02
+
+### Fixed
+- Point auth-web at the shared sweetrpg-support Redis
+
+
 ## 0.1.0 - 2026-08-01
 
 ### Added
