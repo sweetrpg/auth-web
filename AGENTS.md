@@ -27,6 +27,57 @@ bundled into `main-web`, `users-web`, or `admin-web`.
   instance) but never writes to it - they only ever redirect an unauthenticated visitor to this
   app's `/auth/login?return_to=<path>`.
 
+### Auth0 application setup
+
+One Auth0 application backs both `dev` and `local` environments today (same tenant, same
+client id/secret - see `kubernetes/overlays/{dev,local}/secrets.yaml`'s shared Akeyless path
+`/sweetrpg/dev/auth/auth0`). None of this is scripted or captured in Terraform/Akeyless as
+code - it's manual dashboard configuration, so if the application is ever deleted, the tenant
+is rebuilt, or a genuinely separate environment (e.g. production) needs its own application,
+here's what has to exist for login to work:
+
+- **Application type**: Regular Web Application (confidential client - `auth-web` holds
+  `AUTH0_CLIENT_SECRET` and exchanges the authorization code server-side; never a SPA/public
+  client).
+- **Grant type**: Authorization Code only.
+- **Allowed Callback URLs**: one entry per environment sharing this application - both
+  `https://dev.sweetrpg.com/auth/callback` and `https://sweetrpg.local/auth/callback` need to
+  be present simultaneously for `dev` and `local` to both work, since they share one
+  application. A production environment would add its own callback URL here, or - more likely,
+  see below - get its own separate application instead.
+- **Allowed Logout URLs**: the same set of origins, but the *post-logout redirect target*
+  (`returnTo`), not the callback path - `https://dev.sweetrpg.com/` and `https://sweetrpg.local/`
+  (see `Auth0Config.logoutURL`, which derives this from `AUTH0_CALLBACK_URL` by stripping
+  `/auth/callback`). This is a separate list from Allowed Callback URLs in the Auth0 dashboard -
+  missing an entry here doesn't break login, only logout, and manifests as Auth0's own generic
+  "Oops, something went wrong" error page after clicking "Log out," not an error this app's own
+  logs will show anything useful for (confirmed the hard way: the redirect to Auth0 succeeds,
+  Auth0 is the one rejecting the `returnTo` value).
+- **Connections enabled**: at minimum the connection(s) actually used to sign in - confirmed in
+  use: a social connection (GitHub) and email/password (`Username-Password-Authentication`).
+  Enable whichever connections the product actually wants to offer; nothing in this app
+  hardcodes which ones are available, that's entirely an Auth0-dashboard setting.
+- **An API registered for `AUTH0_AUDIENCE`** (Applications → APIs → Create API, *not* the
+  application settings page): `users-api` and `auth-web` both validate/request tokens against
+  this API's Identifier. Without a real API registered, `AUTH0_AUDIENCE` has nothing valid to
+  point at, and `users-api`'s `verifyIntendedAudience` check fails for every token regardless of
+  how correctly everything else is configured - confirmed the hard way: an *empty* string
+  synced into `AUTH0_AUDIENCE` (a stale/never-populated Akeyless value, not a missing
+  environment variable - `Environment.get` treats an empty string as present) passed
+  `users-api`'s `Auth0Config.fromEnvironment()` `guard let` without error, then failed every
+  login at token-verification time with no indication why. Confirming the deployed value is
+  actually non-empty (`kubectl exec ... -- env | grep AUTH0_AUDIENCE`) is a faster diagnostic
+  than assuming the dashboard side is wrong.
+- **Akeyless**: `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE` at
+  `/sweetrpg/dev/auth/auth0`, read by both this app's and `users-api`'s `ExternalSecret`s (see
+  `users-api`'s `AGENTS.md`, "the one shared Auth0 application"). A new environment needing its
+  own application (production, most likely, rather than sharing the `dev` tenant) should follow
+  the same `/sweetrpg/<env>/auth/auth0` path convention rather than inventing a new one.
+
+None of the actual credential values belong in this file or any committed doc - Akeyless is the
+source of truth; this section documents the *shape* of what must exist there and in the Auth0
+dashboard, not the values themselves.
+
 ### Routing
 
 Unlike `catalog-web`/`admin-web` (whose Ingress strips their own `/catalog`/`/admin` prefix
