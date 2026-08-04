@@ -9,6 +9,8 @@ public func configure(_ app: Application) async throws {
   app.http.server.configuration.hostname = "0.0.0.0"
   app.http.server.configuration.port = Environment.get("PORT").flatMap(Int.init) ?? 8080
 
+  app.middleware.use(SentryMiddleware())
+
   // Shared cookie name, unlike every other frontend's own per-app session - this app is the sole
   // writer of the session every other frontend reads. See design.md's "Shared session across
   // every frontend" decision in platform's add-user-api-authn-authz change. Vapor's default
@@ -40,6 +42,10 @@ public func configure(_ app: Application) async throws {
 
   // No AuthRequiredMiddleware here, unlike catalog-web/admin-web: this app's whole job is being
   // reachable while unauthenticated, so it can establish a session in the first place.
+
+  // Gates only /auth/login - see MaintenanceModeMiddleware's doc comment for why the callback
+  // and logout routes are deliberately excluded.
+  app.middleware.use(MaintenanceModeMiddleware())
 
   try routes(app)
 }
