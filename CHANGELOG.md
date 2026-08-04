@@ -16,6 +16,11 @@
 - Give login failures a specific, safe reason code instead of a flag
 
 
+## 0.1.0 - 2026-08-02
+
+### Fixed
+- Point auth-web at the shared sweetrpg-support Redis
+
 
 ## 0.1.0 - 2026-08-01
 
