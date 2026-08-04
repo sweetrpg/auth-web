@@ -1,6 +1,15 @@
 {
-  "originHash" : "7570a8867a68e42ed26cf02558a8cf2bcbd55ecd606d3979df707ab509d57e4c",
+  "originHash" : "e9773e18ac05e9823590309bb322b7ff5b8681f28004b52d8e8d0c7a124a6296",
   "pins" : [
+    {
+      "identity" : "admin-api-client.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sweetrpg/admin-api-client.swift.git",
+      "state" : {
+        "branch" : "develop",
+        "revision" : "fa902b503206f2edacb7f73b844c41d58fa96df8"
+      }
+    },
     {
       "identity" : "async-http-client",
       "kind" : "remoteSourceControl",
