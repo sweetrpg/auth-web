@@ -13,6 +13,36 @@ struct AuthController: RouteCollection {
 
   private static let returnToSessionKey = "auth_return_to"
 
+  /// A small, closed set of user-safe categories for a failed login - never the raw Auth0/
+  /// `users-api` error text, which could leak internal detail (stack traces, upstream error
+  /// messages) into a URL query parameter and from there into browser history/referrer headers/
+  /// server logs downstream. Each consuming frontend maps these to its own copy; see
+  /// `main-web`'s `routes/main.rs`.
+  private enum LoginErrorReason: String {
+    /// Auth0 itself returned an `error` param - most commonly the visitor cancelled/declined
+    /// consent at Auth0's login screen.
+    case denied
+    /// Missing `code` or a `state` mismatch - the flow's session expired, was replayed (e.g. a
+    /// stale back-button navigation to `/auth/callback`), or never had a valid `state` to begin
+    /// with.
+    case expired
+    /// Everything downstream of a valid Auth0 code that isn't `forbidden`: the token exchange,
+    /// ID token decode, or `users-api`'s `/authz/check` call itself failed. Grouped together
+    /// because from the visitor's side these are all "something on our end broke," not
+    /// something they can fix by trying differently.
+    case unavailable
+    /// `users-api` completed the check but denied access, or returned a `sub` that doesn't
+    /// match the token just verified - a real, non-transient "you don't have access" outcome,
+    /// distinct from `unavailable`.
+    case forbidden
+  }
+
+  private func errorRedirect(_ req: Request, to returnTo: String, reason: LoginErrorReason)
+    -> Response
+  {
+    req.redirect(to: "\(returnTo)?login_error=\(reason.rawValue)")
+  }
+
   /// Only a same-host, relative path is accepted - an absolute URL in `return_to` would let this
   /// endpoint be used as an open redirect.
   private func sanitizedReturnTo(_ raw: String?) -> String {
@@ -49,11 +79,11 @@ struct AuthController: RouteCollection {
 
     if let error = query.error {
       req.logger.warning("Auth0 callback returned an error: \(error)")
-      return req.redirect(to: "\(returnTo)?login_error=1")
+      return errorRedirect(req, to: returnTo, reason: .denied)
     }
     guard let code = query.code, query.state == req.session.data["auth_state"] else {
       req.logger.warning("Auth0 callback missing code or state mismatch")
-      return req.redirect(to: "\(returnTo)?login_error=1")
+      return errorRedirect(req, to: returnTo, reason: .expired)
     }
     req.session.data["auth_state"] = nil
 
@@ -82,7 +112,7 @@ struct AuthController: RouteCollection {
       let sub = claims["sub"] as? String
     else {
       req.logger.error("Could not decode Auth0 ID token claims")
-      return req.redirect(to: "\(returnTo)?login_error=1")
+      return errorRedirect(req, to: returnTo, reason: .unavailable)
     }
     let name = (claims["name"] as? String) ?? (claims["email"] as? String) ?? "User"
     let email = claims["email"] as? String
@@ -95,11 +125,11 @@ struct AuthController: RouteCollection {
       authz = try await req.usersAPI.checkAuthz(accessToken: tokenResponse.accessToken)
     } catch {
       req.logger.error("users-api /authz/check call failed: \(error)")
-      return req.redirect(to: "\(returnTo)?login_error=1")
+      return errorRedirect(req, to: returnTo, reason: .unavailable)
     }
     guard authz.allowed, authz.sub == sub || authz.sub == nil else {
       req.logger.warning("users-api denied or mismatched authz check for sub \(sub)")
-      return req.redirect(to: "\(returnTo)?login_error=1")
+      return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
     req.currentUser = SessionUser(sub: sub, name: name, email: email, roles: authz.roles ?? [])

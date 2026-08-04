@@ -51,7 +51,7 @@ struct AppTests {
     try await withApp(configure: configure) { app in
       try await app.testing().test(.GET, "auth/callback?code=abc&state=wrong") { res in
         #expect(res.status == .seeOther)
-        #expect(res.headers.first(name: .location)?.contains("login_error=1") == true)
+        #expect(res.headers.first(name: .location)?.contains("login_error=expired") == true)
       }
     }
   }
@@ -107,7 +107,7 @@ struct AppTests {
       app.maintenanceModeChecker = FakeMaintenanceModeChecker(modes: [active])
       try await app.testing().test(.GET, "auth/callback?code=abc&state=wrong") { res in
         #expect(res.status == .seeOther)
-        #expect(res.headers.first(name: .location)?.contains("login_error=1") == true)
+        #expect(res.headers.first(name: .location)?.contains("login_error=expired") == true)
       }
     }
   }
