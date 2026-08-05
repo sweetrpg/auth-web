@@ -13,7 +13,7 @@ data:
   REDIS_PORT: "6379"
   REDIS_DB: "0"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
-  USERS_API_URL: http://api-v1.sweetrpg-users.svc.cluster.local:8080
+  AUTH_API_URL: http://api-v1.sweetrpg-auth.svc.cluster.local:8080
   # Shared host behind the single traefik-tailscale front door (see
   # support/config/K8s/traefik/overlays/minikube), same convention as the dev overlay's
   # dev.sweetrpg.com.
