@@ -1,4 +1,5 @@
 import Redis
+import RedisSessionDriver
 import Vapor
 
 // TODO: HEALTH_TOKEN-gated deep health check (see docs/service-conventions.md's Health checks
@@ -28,9 +29,8 @@ public func configure(_ app: Application) async throws {
     )
     // Not `.redis` (Vapor's stock RedisSessionsDriver): that driver propagates Redis errors
     // straight through SessionsMiddleware, which runs on every request, so a Redis outage would
-    // 500 the whole app. ResilientRedisSessionDriver degrades to "treated as logged out" instead
-    // - see its doc comment. Every other frontend reading this same store applies the same
-    // fail-open pattern on their own read path.
+    // 500 the whole app. ResilientRedisSessionDriver (sweetrpg/redis-session-driver) degrades to
+    // "treated as logged out" instead - see its doc comment.
     app.sessions.use { _ in ResilientRedisSessionDriver() }
   } else {
     app.logger.warning(
