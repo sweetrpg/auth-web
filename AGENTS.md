@@ -10,14 +10,15 @@ Authorization Code flow (`/auth/login`, `/auth/callback`, `/auth/logout`) and th
 holding Auth0 client credentials. It establishes one shared session (cookie + Redis-backed
 store) that every other frontend reads directly, so logging in once through this app is
 recognized suite-wide rather than each frontend running its own independent login. See
-`sweetrpg/platform`'s `openspec/changes/add-user-api-authn-authz` for the full design and why
+`sweetrpg/platform`'s `openspec/changes/add-user-api-authn-authz` for the original design and why
 this exists as its own repo (deliberately kept small - login is infrastructure every other
 frontend hard-depends on, so it gets the smallest possible blast radius) rather than being
-bundled into `main-web`, `users-web`, or `admin-web`.
+bundled into `main-web`, `users-web`, or `admin-web`. Its authz backend moved from `users-api` to
+a dedicated `auth-api` - see `openspec/changes/split-authz-into-auth-api` for why.
 
 ### Dependencies within the platform
 
-- **users-api**: called once at login, `POST /authz/check`, to establish the session's verified
+- **auth-api**: called once at login, `POST /authz/check`, to establish the session's verified
   roles server-side - not a local unverified token decode.
 - **Redis**: this app's own dedicated instance, `redis.sweetrpg-auth.svc.cluster.local`, deployed
   alongside it in `sweetrpg-auth`. It doubles as the suite-wide session store - see
@@ -58,19 +59,19 @@ here's what has to exist for login to work:
   Enable whichever connections the product actually wants to offer; nothing in this app
   hardcodes which ones are available, that's entirely an Auth0-dashboard setting.
 - **An API registered for `AUTH0_AUDIENCE`** (Applications → APIs → Create API, *not* the
-  application settings page): `users-api` and `auth-web` both validate/request tokens against
+  application settings page): `auth-api` and `auth-web` both validate/request tokens against
   this API's Identifier. Without a real API registered, `AUTH0_AUDIENCE` has nothing valid to
-  point at, and `users-api`'s `verifyIntendedAudience` check fails for every token regardless of
+  point at, and `auth-api`'s `verifyIntendedAudience` check fails for every token regardless of
   how correctly everything else is configured - confirmed the hard way: an *empty* string
   synced into `AUTH0_AUDIENCE` (a stale/never-populated Akeyless value, not a missing
   environment variable - `Environment.get` treats an empty string as present) passed
-  `users-api`'s `Auth0Config.fromEnvironment()` `guard let` without error, then failed every
+  `auth-api`'s `Auth0Config.fromEnvironment()` `guard let` without error, then failed every
   login at token-verification time with no indication why. Confirming the deployed value is
   actually non-empty (`kubectl exec ... -- env | grep AUTH0_AUDIENCE`) is a faster diagnostic
   than assuming the dashboard side is wrong.
 - **Akeyless**: `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE` at
-  `/sweetrpg/dev/auth/auth0`, read by both this app's and `users-api`'s `ExternalSecret`s (see
-  `users-api`'s `AGENTS.md`, "the one shared Auth0 application"). A new environment needing its
+  `/sweetrpg/dev/auth/auth0`, read by both this app's and `auth-api`'s `ExternalSecret`s (see
+  `auth-api`'s `AGENTS.md`, "the one shared Auth0 application"). A new environment needing its
   own application (production, most likely, rather than sharing the `dev` tenant) should follow
   the same `/sweetrpg/<env>/auth/auth0` path convention rather than inventing a new one.
 

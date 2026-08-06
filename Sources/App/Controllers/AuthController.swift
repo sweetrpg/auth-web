@@ -118,17 +118,17 @@ struct AuthController: RouteCollection {
     let email = claims["email"] as? String
 
     // Server-side verified roles, not a local unverified decode - see design.md's "Server-side
-    // JWKS verification" decision. A users-api outage fails the login rather than granting an
+    // JWKS verification" decision. An auth-api outage fails the login rather than granting an
     // unverified session; that's the correct failure mode for the suite's sole session writer.
-    let authz: UsersAPIClient.AuthzCheckResponse
+    let authz: AuthAPIClient.AuthzCheckResponse
     do {
-      authz = try await req.usersAPI.checkAuthz(accessToken: tokenResponse.accessToken)
+      authz = try await req.authAPI.checkAuthz(accessToken: tokenResponse.accessToken)
     } catch {
-      req.logger.error("users-api /authz/check call failed: \(error)")
+      req.logger.error("auth-api /authz/check call failed: \(error)")
       return errorRedirect(req, to: returnTo, reason: .unavailable)
     }
     guard authz.allowed, authz.sub == sub || authz.sub == nil else {
-      req.logger.warning("users-api denied or mismatched authz check for sub \(sub)")
+      req.logger.warning("auth-api denied or mismatched authz check for sub \(sub)")
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 

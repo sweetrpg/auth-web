@@ -1,14 +1,15 @@
 import Vapor
 
-/// Calls `users-api`'s `POST /authz/check` once at login to establish the session's verified
-/// roles - see design.md's "Server-side JWKS verification" decision in platform's
-/// add-user-api-authn-authz change. This app never decodes or verifies the token itself; it
-/// passes it straight through and trusts `users-api`'s answer.
-struct UsersAPIClient {
+/// Calls `auth-api`'s `POST /authz/check` once at login to establish the session's verified
+/// roles - see `sweetrpg/platform`'s `split-authz-into-auth-api` change design.md. This app
+/// never decodes or verifies the token itself; it passes it straight through and trusts
+/// `auth-api`'s answer. Renamed from `UsersAPIClient` when authz moved off `users-api` into its
+/// own dedicated service.
+struct AuthAPIClient {
   let request: Request
 
   private var baseURL: String {
-    Environment.get("USERS_API_URL") ?? "http://users-api.sweetrpg-user.svc.cluster.local"
+    Environment.get("AUTH_API_URL") ?? "http://auth-api.sweetrpg-auth.svc.cluster.local"
   }
 
   struct AuthzCheckResponse: Content {
@@ -29,5 +30,5 @@ struct UsersAPIClient {
 }
 
 extension Request {
-  var usersAPI: UsersAPIClient { UsersAPIClient(request: self) }
+  var authAPI: AuthAPIClient { AuthAPIClient(request: self) }
 }
