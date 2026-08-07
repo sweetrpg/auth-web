@@ -15,7 +15,7 @@ data:
   REDIS_PORT: "6379"
   REDIS_DB: "0"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
-  AUTH_API_URL: http://api-v1.sweetrpg-auth.svc.cluster.local:8080
+  AUTH_API_URL: http://api-v1.sweetrpg-auth.svc.cluster.local:8000
   # Unlike catalog-web/admin-web, this app's Ingress does NOT strip the /auth prefix (see
   # ingress.yaml) - AuthController's routes are already registered as /auth/login, /auth/callback,
   # /auth/logout, matching the browser-facing path one-to-one, the same way main-web's root
