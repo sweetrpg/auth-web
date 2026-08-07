@@ -1,4 +1,12 @@
 
+## 0.3.0 - 2026-08-07
+
+### Added
+- Use sweetrpg/redis-session-driver instead of local driver
+- Repoint authz check at auth-api
+
+
+
 ## 0.2.0 - 2026-08-04
 
 ### Added
