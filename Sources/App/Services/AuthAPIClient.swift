@@ -24,6 +24,13 @@ struct AuthAPIClient {
   func checkAuthz(accessToken: String) async throws -> AuthzCheckResponse {
     try await request.client.post(URI(string: "\(baseURL)/authz/check")) { req in
       req.headers.bearerAuthorization = BearerAuthorization(token: accessToken)
+      // Forward whatever trace context this request already arrived with - never fabricate
+      // one. Nothing upstream of this app sets `traceparent` yet, so this is a no-op today;
+      // it activates automatically once frontend-side tracing is separately scoped (see
+      // sweetrpg/platform's migrate-auth-users-api-to-go change design.md).
+      if let traceparent = request.headers.first(name: "traceparent") {
+        req.headers.replaceOrAdd(name: "traceparent", value: traceparent)
+      }
       try req.content.encode(["service": "platform"])
     }.content.decode(AuthzCheckResponse.self)
   }
