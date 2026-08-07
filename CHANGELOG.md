@@ -1,4 +1,15 @@
 
+## 0.4.0 - 2026-08-07
+
+### Added
+- Forward inbound traceparent header to auth-api
+
+
+### Fixed
+- Correct AUTH_API_URL port to match auth-api's Service
+
+
+
 ## 0.3.0 - 2026-08-07
 
 ### Added
