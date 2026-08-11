@@ -1,4 +1,11 @@
 
+## 0.6.0 - 2026-08-11
+
+### Added
+- Add expiry to the shared session, sourced from Auth0's token lifetime
+
+
+
 ## 0.5.0 - 2026-08-11
 
 ### Added
