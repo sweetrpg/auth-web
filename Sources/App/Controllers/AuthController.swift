@@ -1,3 +1,4 @@
+import RedisSessionDriver
 import Vapor
 
 /// Sole implementer of the Auth0 Authorization Code flow for the whole suite - see design.md's
@@ -91,10 +92,16 @@ struct AuthController: RouteCollection {
     struct TokenResponse: Content {
       let accessToken: String
       let idToken: String
+      /// Seconds until the access token expires, per Auth0's token response - drives this
+      /// session's `expiry` (see `SessionUser.expiry`). Falls back to
+      /// `ResilientRedisSessionDriver.defaultTTL` if Auth0 omits it, so a session always has a
+      /// bound rather than living forever.
+      let expiresIn: Int?
 
       enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case idToken = "id_token"
+        case expiresIn = "expires_in"
       }
     }
     let tokenResponse = try await req.client.post(
@@ -132,9 +139,11 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
+    let ttl =
+      tokenResponse.expiresIn.map(TimeInterval.init) ?? ResilientRedisSessionDriver.defaultTTL
     req.currentUser = SessionUser(
       sub: sub, name: name, email: email, roles: authz.roles ?? [],
-      accessToken: tokenResponse.accessToken)
+      accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl))
     return req.redirect(to: returnTo)
   }
 

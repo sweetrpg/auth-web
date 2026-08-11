@@ -16,4 +16,11 @@ struct SessionUser: Codable {
   /// write call fails with 401 until the user logs in again; that degradation is accepted
   /// rather than adding token refresh, which is out of scope here.
   let accessToken: String
+  /// When this session becomes invalid - matches the Auth0 access token's own `expires_in`
+  /// lifetime from the token exchange. Every reader must treat a session at or past this
+  /// timestamp as "no session found," not stale data - see `sweetrpg/platform`'s
+  /// `docs/frontend-conventions.md` ("Shared session schema"). Enforced independently at the
+  /// Redis key level by `ResilientRedisSessionDriver`'s TTL; this field is what lets
+  /// application code explain *why* a session ended and display "signed in until X."
+  let expiry: Date
 }
