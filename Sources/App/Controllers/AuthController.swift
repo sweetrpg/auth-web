@@ -139,7 +139,8 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
-    let ttl = tokenResponse.expiresIn.map(TimeInterval.init) ?? ResilientRedisSessionDriver.defaultTTL
+    let ttl =
+      tokenResponse.expiresIn.map(TimeInterval.init) ?? ResilientRedisSessionDriver.defaultTTL
     req.currentUser = SessionUser(
       sub: sub, name: name, email: email, roles: authz.roles ?? [],
       accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl))
