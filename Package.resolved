@@ -1,5 +1,5 @@
 {
-  "originHash" : "f532d1234379bf7005a70f67772d890f84acaac52c0311320e852bbeb686cc6e",
+  "originHash" : "4840406ec4e0514a6565c10478cfbb8c4ab91f9cb17f5c92b444c34a897035b6",
   "pins" : [
     {
       "identity" : "admin-api-client.swift",
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sweetrpg/redis-session-driver.git",
       "state" : {
-        "revision" : "d034fad4a705f152b398565be195aade5351b637",
-        "version" : "0.0.2"
+        "revision" : "18ecfc41ba57363b00585bd4ea24cc8ae0465cd2",
+        "version" : "0.0.3"
       }
     },
     {

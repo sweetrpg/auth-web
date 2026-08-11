@@ -12,8 +12,8 @@ let package = Package(
         // 🔴 Redis-backed session storage, shared with every other frontend that reads it.
         .package(url: "https://github.com/vapor/redis.git", from: "4.10.0"),
         // 🛡️ Fail-open Redis session driver - degrades to "treated as logged out" instead of
-        // 500ing when Redis is unreachable.
-        .package(url: "https://github.com/sweetrpg/redis-session-driver.git", from: "0.0.2"),
+        // 500ing when Redis is unreachable. 0.0.3+ adds TTL/expiry support (platform#26).
+        .package(url: "https://github.com/sweetrpg/redis-session-driver.git", from: "0.0.3"),
         // 🚧 admin-api maintenance-mode/banner client - fail-open by contract, never throws.
         .package(url: "https://github.com/sweetrpg/admin-api-client.swift.git", branch: "develop"),
     ],
