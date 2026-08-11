@@ -132,7 +132,9 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
-    req.currentUser = SessionUser(sub: sub, name: name, email: email, roles: authz.roles ?? [])
+    req.currentUser = SessionUser(
+      sub: sub, name: name, email: email, roles: authz.roles ?? [],
+      accessToken: tokenResponse.accessToken)
     return req.redirect(to: returnTo)
   }
 

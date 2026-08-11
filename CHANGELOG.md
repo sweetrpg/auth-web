@@ -1,4 +1,11 @@
 
+## 0.5.0 - 2026-08-11
+
+### Added
+- Carry the Auth0 access token in the shared session
+
+
+
 ## 0.4.0 - 2026-08-07
 
 ### Added
