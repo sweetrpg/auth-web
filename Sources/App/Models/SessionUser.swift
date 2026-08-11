@@ -9,4 +9,11 @@ struct SessionUser: Codable {
   let name: String
   let email: String?
   let roles: [String]
+  /// The Auth0 access token from the code exchange, so a frontend making an authenticated
+  /// write call to a backend (e.g. catalog-api's `/authz/check`-gated endpoints) has something
+  /// to forward as a Bearer token - see platform's volume-edit-with-approval-workflow change.
+  /// No refresh-token flow exists in this app, so once this token's own lifetime expires, a
+  /// write call fails with 401 until the user logs in again; that degradation is accepted
+  /// rather than adding token refresh, which is out of scope here.
+  let accessToken: String
 }
