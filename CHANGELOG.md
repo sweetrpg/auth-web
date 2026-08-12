@@ -1,4 +1,11 @@
 
+## 0.8.1 - 2026-08-12
+
+### Fixed
+- Handle Auth0 token exchange failures gracefully
+
+
+
 ## 0.8.0 - 2026-08-12
 
 ### Added
