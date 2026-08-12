@@ -10,6 +10,7 @@ struct AuthController: RouteCollection {
     routes.get("auth", "login", use: redirectToAuth0)
     routes.get("auth", "callback", use: callback)
     routes.post("auth", "logout", use: logout)
+    routes.get("auth", "logout-complete", use: logoutComplete)
   }
 
   private static let returnToSessionKey = "auth_return_to"
@@ -149,10 +150,30 @@ struct AuthController: RouteCollection {
 
   @Sendable
   func logout(req: Request) async throws -> Response {
+    struct LogoutQuery: Content {
+      let returnTo: String?
+      enum CodingKeys: String, CodingKey { case returnTo = "return_to" }
+    }
+    let query = try req.query.decode(LogoutQuery.self)
+    let returnTo = sanitizedReturnTo(query.returnTo)
+
     let config = req.application.auth0Config
     req.currentUser = nil
     req.session.destroy()
     return config.isConfigured
-      ? req.redirect(to: config.logoutURL) : req.redirect(to: "/")
+      ? req.redirect(to: config.logoutURL(returnTo: returnTo)) : req.redirect(to: returnTo)
+  }
+
+  /// Auth0's own `returnTo` is pinned to this fixed URL (see `Auth0Config.logoutURL`) since it
+  /// can't be pre-registered for every possible destination - this route performs the actual
+  /// redirect to the visitor's destination once Auth0's logout round trip completes.
+  @Sendable
+  func logoutComplete(req: Request) async throws -> Response {
+    struct LogoutCompleteQuery: Content {
+      let returnTo: String?
+      enum CodingKeys: String, CodingKey { case returnTo = "return_to" }
+    }
+    let query = try req.query.decode(LogoutCompleteQuery.self)
+    return req.redirect(to: sanitizedReturnTo(query.returnTo))
   }
 }
