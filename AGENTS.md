@@ -47,13 +47,18 @@ here's what has to exist for login to work:
   application. A production environment would add its own callback URL here, or - more likely,
   see below - get its own separate application instead.
 - **Allowed Logout URLs**: the same set of origins, but the *post-logout redirect target*
-  (`returnTo`), not the callback path - `https://dev.sweetrpg.com/` and `https://sweetrpg.local/`
-  (see `Auth0Config.logoutURL`, which derives this from `AUTH0_CALLBACK_URL` by stripping
-  `/auth/callback`). This is a separate list from Allowed Callback URLs in the Auth0 dashboard -
-  missing an entry here doesn't break login, only logout, and manifests as Auth0's own generic
-  "Oops, something went wrong" error page after clicking "Log out," not an error this app's own
-  logs will show anything useful for (confirmed the hard way: the redirect to Auth0 succeeds,
-  Auth0 is the one rejecting the `returnTo` value).
+  (`returnTo`), not the callback path - `https://dev.sweetrpg.com/auth/logout-complete` and
+  `https://sweetrpg.local/auth/logout-complete` (see `Auth0Config.logoutURL(returnTo:)`, which
+  derives this from `AUTH0_CALLBACK_URL` by swapping `/auth/callback` for
+  `/auth/logout-complete`). Auth0 only accepts a `returnTo` that exactly matches one of these
+  registered URLs, so the visitor's actual post-logout destination can't be registered directly -
+  it travels as `/auth/logout-complete`'s own `return_to` query parameter instead, which this app
+  validates and redirects to itself (see `openspec/changes/auth-web-logout-preserve-return-path`
+  in `sweetrpg/platform`). This is a separate list from Allowed Callback URLs in the Auth0
+  dashboard - missing an entry here doesn't break login, only logout, and manifests as Auth0's
+  own generic "Oops, something went wrong" error page after clicking "Log out," not an error this
+  app's own logs will show anything useful for (confirmed the hard way: the redirect to Auth0
+  succeeds, Auth0 is the one rejecting the `returnTo` value).
 - **Connections enabled**: at minimum the connection(s) actually used to sign in - confirmed in
   use: a social connection (GitHub) and email/password (`Username-Password-Authentication`).
   Enable whichever connections the product actually wants to offer; nothing in this app
