@@ -26,6 +26,29 @@ private func makeMaintenanceMode(
   return try JSONDecoder().decode(MaintenanceMode.self, from: data)
 }
 
+@Suite("Auth0Config")
+struct Auth0ConfigTests {
+  @Test("logoutURL forwards the sanitized return path via logout-complete")
+  func logoutURLForwardsReturnPath() throws {
+    let config = Auth0Config(
+      domain: "sweetrpg-dev.us.auth0.com",
+      clientID: "client-id",
+      clientSecret: "secret",
+      callbackURL: "https://dev.sweetrpg.com/auth/callback",
+      audience: nil
+    )
+    let url = config.logoutURL(returnTo: "/catalog/browse")
+    #expect(url.hasPrefix("https://sweetrpg-dev.us.auth0.com/v2/logout?"))
+    #expect(url.contains("client_id=client-id"))
+
+    let returnToValue = try #require(
+      URLComponents(string: url)?.queryItems?.first(where: { $0.name == "returnTo" })?.value)
+    #expect(
+      returnToValue == "https://dev.sweetrpg.com/auth/logout-complete?return_to=%2Fcatalog%2Fbrowse"
+    )
+  }
+}
+
 @Suite("App")
 struct AppTests {
   @Test("status ping responds ok")
@@ -94,6 +117,56 @@ struct AppTests {
       try await app.testing().test(.GET, "auth/login") { res in
         #expect(res.status == .serviceUnavailable)
         #expect(res.headers.contentType != .html)
+      }
+    }
+  }
+
+  @Test("logout with a valid relative return path preserves it through logout-complete")
+  func logoutPreservesValidReturnPath() async throws {
+    try await withApp(configure: configure) { app in
+      try await app.testing().test(.POST, "auth/logout?return_to=%2Fcatalog%2Fbrowse") { res in
+        // Auth0 isn't configured in this test app, so `logout` falls back to a direct redirect
+        // rather than round-tripping through Auth0 - still enough to prove `return_to` was read
+        // and sanitized correctly.
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/catalog/browse")
+      }
+      try await app.testing().test(.GET, "auth/logout-complete?return_to=%2Fcatalog%2Fbrowse") {
+        res in
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/catalog/browse")
+      }
+    }
+  }
+
+  @Test("logout with no return path falls back to the suite root")
+  func logoutWithoutReturnPathFallsBackToRoot() async throws {
+    try await withApp(configure: configure) { app in
+      try await app.testing().test(.POST, "auth/logout") { res in
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/")
+      }
+      try await app.testing().test(.GET, "auth/logout-complete") { res in
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/")
+      }
+    }
+  }
+
+  @Test("logout with an unsafe absolute return path falls back to the suite root")
+  func logoutWithUnsafeReturnPathFallsBackToRoot() async throws {
+    try await withApp(configure: configure) { app in
+      try await app.testing().test(
+        .POST, "auth/logout?return_to=https%3A%2F%2Fevil.example%2F"
+      ) { res in
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/")
+      }
+      try await app.testing().test(
+        .GET, "auth/logout-complete?return_to=https%3A%2F%2Fevil.example%2F"
+      ) { res in
+        #expect(res.status == .seeOther)
+        #expect(res.headers.first(name: .location) == "/")
       }
     }
   }
