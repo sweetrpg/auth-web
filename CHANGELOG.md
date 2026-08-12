@@ -1,4 +1,15 @@
 
+## 0.7.0 - 2026-08-12
+
+### Added
+- Preserve return path through logout
+
+
+### Documentation
+- Document logout-complete Allowed Logout URLs prerequisite
+
+
+
 ## 0.6.0 - 2026-08-11
 
 ### Added
