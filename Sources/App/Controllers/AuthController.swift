@@ -105,16 +105,25 @@ struct AuthController: RouteCollection {
         case expiresIn = "expires_in"
       }
     }
-    let tokenResponse = try await req.client.post(
-      URI(string: "https://\(config.domain)/oauth/token"),
-      content: [
-        "grant_type": "authorization_code",
-        "client_id": config.clientID,
-        "client_secret": config.clientSecret,
-        "code": code,
-        "redirect_uri": config.callbackURL,
-      ] as [String: String]
-    ).content.decode(TokenResponse.self)
+    // Auth0 returning a non-token body (an error JSON, an outage page, ...) must not crash this
+    // request uncaught - a visitor whose code has already expired or been replayed is a routine,
+    // expected failure mode, not a 500.
+    let tokenResponse: TokenResponse
+    do {
+      tokenResponse = try await req.client.post(
+        URI(string: "https://\(config.domain)/oauth/token"),
+        content: [
+          "grant_type": "authorization_code",
+          "client_id": config.clientID,
+          "client_secret": config.clientSecret,
+          "code": code,
+          "redirect_uri": config.callbackURL,
+        ] as [String: String]
+      ).content.decode(TokenResponse.self)
+    } catch {
+      req.logger.error("Auth0 token exchange failed: \(error)")
+      return errorRedirect(req, to: returnTo, reason: .unavailable)
+    }
 
     guard let claims = decodeUnverifiedJWTPayload(tokenResponse.idToken),
       let sub = claims["sub"] as? String
