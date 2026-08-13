@@ -13,7 +13,14 @@ struct AuthController: RouteCollection {
     routes.get("auth", "logout-complete", use: logoutComplete)
   }
 
-  private static let returnToSessionKey = "auth_return_to"
+  /// Keys a pending login's `return_to` by its own `state` value rather than a single shared
+  /// session slot, so two `/auth/login` calls in the same session (a browser link-prefetch/
+  /// hover-preload racing a real click, a double form submission, ...) don't clobber each
+  /// other's pending state - each Auth0 round trip only ever needs to find its own entry. See
+  /// `openspec/changes/auth-web-logout-preserve-return-path`'s follow-up in
+  /// `sweetrpg/platform` for how the previous single-slot design produced `login_error=expired`
+  /// under exactly this race.
+  private static func pendingLoginKey(state: String) -> String { "auth_pending_\(state)" }
 
   /// A small, closed set of user-safe categories for a failed login - never the raw Auth0/
   /// `users-api` error text, which could leak internal detail (stack traces, upstream error
@@ -63,8 +70,7 @@ struct AuthController: RouteCollection {
     let query = try req.query.decode(LoginQuery.self)
 
     let state = [UInt8].random(count: 16).base64String()
-    req.session.data["auth_state"] = state
-    req.session.data[Self.returnToSessionKey] = sanitizedReturnTo(query.returnTo)
+    req.session.data[Self.pendingLoginKey(state: state)] = sanitizedReturnTo(query.returnTo)
     return req.redirect(to: config.authorizeURL(state: state))
   }
 
@@ -76,18 +82,23 @@ struct AuthController: RouteCollection {
       let error: String?
     }
     let query = try req.query.decode(CallbackQuery.self)
-    let returnTo = req.session.data[Self.returnToSessionKey] ?? "/"
-    req.session.data[Self.returnToSessionKey] = nil
+    // Looks up (and consumes) the pending login this `state` was issued for - `pendingReturnTo`
+    // being non-nil is what used to be a direct `state == storedState` comparison against a
+    // single shared session slot; keying per-state instead means a second, unrelated
+    // `/auth/login` call in this session can't invalidate this one's pending state.
+    let pendingKey = query.state.map(Self.pendingLoginKey(state:))
+    let pendingReturnTo = pendingKey.flatMap { req.session.data[$0] }
+    if let pendingKey { req.session.data[pendingKey] = nil }
+    let returnTo = pendingReturnTo ?? "/"
 
     if let error = query.error {
       req.logger.warning("Auth0 callback returned an error: \(error)")
       return errorRedirect(req, to: returnTo, reason: .denied)
     }
-    guard let code = query.code, query.state == req.session.data["auth_state"] else {
-      req.logger.warning("Auth0 callback missing code or state mismatch")
+    guard let code = query.code, pendingReturnTo != nil else {
+      req.logger.warning("Auth0 callback missing code or no matching pending login for state")
       return errorRedirect(req, to: returnTo, reason: .expired)
     }
-    req.session.data["auth_state"] = nil
 
     let config = req.application.auth0Config
     struct TokenResponse: Content {
