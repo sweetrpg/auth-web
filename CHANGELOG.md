@@ -1,4 +1,11 @@
 
+## 0.8.2 - 2026-08-13
+
+### Fixed
+- Key pending logins by state to avoid a login-race expiry
+
+
+
 ## 0.8.1 - 2026-08-12
 
 ### Fixed
