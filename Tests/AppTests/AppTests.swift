@@ -80,6 +80,46 @@ struct AppTests {
     }
   }
 
+  @Test("a second /auth/login in the same session doesn't invalidate the first attempt's state")
+  func loginRaceDoesNotInvalidateFirstAttempt() async throws {
+    try await withApp(configure: configure) { app in
+      // 127.0.0.1:1 (nothing listens there) fails fast with connection-refused, unlike a
+      // non-resolvable domain, which would eat several seconds in DNS timeout per test run.
+      app.auth0Config = Auth0Config(
+        domain: "127.0.0.1:1", clientID: "client-id", clientSecret: "secret",
+        callbackURL: "http://localhost/auth/callback", audience: nil)
+
+      var cookie = ""
+      var firstState = ""
+      try await app.testing().test(.GET, "auth/login") { res in
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+        let location = res.headers.first(name: .location) ?? ""
+        firstState =
+          URLComponents(string: location)?.queryItems?.first(where: { $0.name == "state" })?
+          .value ?? ""
+      }
+      #expect(!cookie.isEmpty)
+      #expect(!firstState.isEmpty)
+
+      // A second /auth/login in the same session - simulates a browser prefetch/hover-preload
+      // racing the real click, or a double form submission.
+      try await app.testing().test(
+        .GET, "auth/login", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { _ in }
+
+      // The FIRST attempt's callback must still find its own pending state - not "expired" just
+      // because a second, unrelated /auth/login happened in between.
+      try await app.testing().test(
+        .GET, "auth/callback?code=abc&state=\(firstState)",
+        headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.status == .seeOther)
+        let location = res.headers.first(name: .location) ?? ""
+        #expect(!location.contains("login_error=expired"))
+      }
+    }
+  }
+
   @Test("login renders the maintenance page when a maintenance mode is active")
   func loginRendersMaintenancePage() async throws {
     let active = try makeMaintenanceMode(
