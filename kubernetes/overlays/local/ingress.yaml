@@ -6,6 +6,7 @@ metadata:
   name: web-v1
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: sweetrpg-auth-errors-shared-web@kubernetescrd
     kubernetes.io/ingress.class: traefik
 
 spec:
