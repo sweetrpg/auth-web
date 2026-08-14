@@ -1,4 +1,11 @@
 
+## 0.8.4 - 2026-08-14
+
+### Fixed
+- Percent-encode Auth0 query values so + survives round-trip
+
+
+
 ## 0.8.3 - 2026-08-13
 
 ### Fixed
