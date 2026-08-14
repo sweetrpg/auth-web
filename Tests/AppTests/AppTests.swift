@@ -252,3 +252,50 @@ struct AppTests {
     }
   }
 }
+
+@Suite("SessionUserAccess")
+struct SessionUserAccessTests {
+  @Test("currentUser round-trips through the session as an RFC 3339 expiry, not a raw Double")
+  func currentUserRoundTripsRFC3339Expiry() async throws {
+    try await withApp(configure: configure) { app in
+      // req.currentUser needs SessionsMiddleware in the request pipeline (a bare Request()
+      // crashes on any session access), so drive it through a real route instead of a synthetic
+      // Request.
+      let expiry = Date(timeIntervalSince1970: 1_800_000_000)
+      app.get("test-set-current-user") { req -> HTTPStatus in
+        req.currentUser = SessionUser(
+          sub: "auth0|abc", name: "Ada", email: "ada@example.com", roles: ["admin"],
+          accessToken: "token", expiry: expiry)
+        return .ok
+      }
+      app.get("test-get-stored-expiry") { req -> String in
+        req.session.data["user"] ?? ""
+      }
+      app.get("test-get-current-user-expiry") { req -> String in
+        guard let user = req.currentUser else { return "nil" }
+        return String(user.expiry.timeIntervalSince1970)
+      }
+
+      var cookie = ""
+      try await app.testing().test(.GET, "test-set-current-user") { res in
+        #expect(res.status == .ok)
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+      }
+      try await app.testing().test(
+        .GET, "test-get-stored-expiry", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        let stored = res.body.string
+        // RFC 3339, not a bare number - `main-web`'s Rust chrono::DateTime<Utc> (and any other
+        // reader following docs/frontend-conventions.md's documented schema) can only parse
+        // this.
+        #expect(stored.contains("2027-01-15T"))
+        #expect(!stored.contains("\"expiry\":18") && !stored.contains("\"expiry\":8"))
+      }
+      try await app.testing().test(
+        .GET, "test-get-current-user-expiry", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.body.string == String(expiry.timeIntervalSince1970))
+      }
+    }
+  }
+}
