@@ -19,27 +19,40 @@ struct Auth0Config {
     )
   }
 
-  func authorizeURL(state: String) -> String {
-    var components = URLComponents(string: "https://\(domain)/authorize")!
-    var items = [
-      URLQueryItem(name: "response_type", value: "code"),
-      URLQueryItem(name: "client_id", value: clientID),
-      URLQueryItem(name: "redirect_uri", value: callbackURL),
-      URLQueryItem(name: "scope", value: "openid profile email"),
-      URLQueryItem(name: "state", value: state),
-    ]
-    if let audience { items.append(URLQueryItem(name: "audience", value: audience)) }
-    components.queryItems = items
-    return components.url!.absoluteString
-  }
-
-  /// Unreserved characters per RFC 3986 - the only characters guaranteed to survive unescaped
-  /// when a full URL (itself containing `?`/`=`/`&`) is embedded as a single query parameter
-  /// value. `URLComponents.queryItems`' own percent-encoding is too lenient for this (it leaves
-  /// `/`, `:`, and `?` unescaped), which would let the nested URL's own `?`/`=` be misread as
-  /// part of the outer query string.
+  /// Unreserved characters per RFC 3986 - the only characters guaranteed to survive unescaped.
+  /// `URLComponents.queryItems`' own percent-encoding is too lenient for this: it leaves `+`
+  /// unescaped since `+` is a legal, non-reserved query character per RFC 3986, but Vapor (like
+  /// most web frameworks) decodes query values as `application/x-www-form-urlencoded`, where an
+  /// unescaped `+` means a literal space. A base64 `state` value containing `+` would round-trip
+  /// through Auth0's redirect back to `/auth/callback` and get silently corrupted (`+` -> ` `)
+  /// on decode, no longer matching the session-stored pending-login key - producing
+  /// `login_error=expired` for a perfectly legitimate login. Percent-encoding every value with
+  /// this stricter set (also used by `logoutURL`, where the same leniency would let a nested
+  /// URL's own `?`/`=` be misread as part of the outer query string) avoids both problems.
   private static let unreservedCharacters = CharacterSet(
     charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+  /// Builds a `URLComponents`' `percentEncodedQuery` from name/value pairs, each value escaped
+  /// with `unreservedCharacters` rather than `URLComponents.queryItems`' own (too lenient)
+  /// encoding - the query-item builder API without its unsafe-for-us default encoding.
+  private static func percentEncodedQuery(_ items: [(name: String, value: String)]) -> String {
+    items.map { "\($0.name)=\($0.value.addingPercentEncoding(withAllowedCharacters: unreservedCharacters) ?? $0.value)" }
+      .joined(separator: "&")
+  }
+
+  func authorizeURL(state: String) -> String {
+    var components = URLComponents(string: "https://\(domain)/authorize")!
+    var items: [(name: String, value: String)] = [
+      ("response_type", "code"),
+      ("client_id", clientID),
+      ("redirect_uri", callbackURL),
+      ("scope", "openid profile email"),
+      ("state", state),
+    ]
+    if let audience { items.append(("audience", audience)) }
+    components.percentEncodedQuery = Self.percentEncodedQuery(items)
+    return components.url!.absoluteString
+  }
 
   /// Auth0 only allows a `returnTo` that exactly matches a registered Allowed Logout URL, so the
   /// visitor's actual (arbitrary) destination can't be passed straight through - it travels as
@@ -48,18 +61,12 @@ struct Auth0Config {
   func logoutURL(returnTo: String) -> String {
     let logoutCompleteBase = callbackURL.replacingOccurrences(
       of: "/auth/callback", with: "/auth/logout-complete")
-    let encodedReturnTo =
-      returnTo.addingPercentEncoding(withAllowedCharacters: Self.unreservedCharacters) ?? "/"
-    let logoutCompleteURL = "\(logoutCompleteBase)?return_to=\(encodedReturnTo)"
-    let encodedLogoutCompleteURL =
-      logoutCompleteURL.addingPercentEncoding(withAllowedCharacters: Self.unreservedCharacters)
-      ?? logoutCompleteURL
+    let logoutCompleteURL = "\(logoutCompleteBase)?\(Self.percentEncodedQuery([("return_to", returnTo)]))"
 
-    let encodedClientID =
-      clientID.addingPercentEncoding(withAllowedCharacters: Self.unreservedCharacters) ?? clientID
     var components = URLComponents(string: "https://\(domain)/v2/logout")!
-    components.percentEncodedQuery =
-      "client_id=\(encodedClientID)&returnTo=\(encodedLogoutCompleteURL)"
+    components.percentEncodedQuery = Self.percentEncodedQuery([
+      ("client_id", clientID), ("returnTo", logoutCompleteURL),
+    ])
     return components.url!.absoluteString
   }
 }
