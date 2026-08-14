@@ -47,6 +47,22 @@ struct Auth0ConfigTests {
       returnToValue == "https://dev.sweetrpg.com/auth/logout-complete?return_to=%2Fcatalog%2Fbrowse"
     )
   }
+
+  @Test("authorizeURL percent-encodes state so a literal + survives form-urlencoded decoding")
+  func authorizeURLEncodesPlusInState() throws {
+    let config = Auth0Config(
+      domain: "sweetrpg-dev.us.auth0.com",
+      clientID: "client-id",
+      clientSecret: "secret",
+      callbackURL: "https://dev.sweetrpg.com/auth/callback",
+      audience: nil
+    )
+    // A state value containing "+" - URLComponents.queryItems would leave this unescaped, which
+    // Vapor's application/x-www-form-urlencoded query decoder would then misread as a space.
+    let url = config.authorizeURL(state: "QqSBv+zs88jhodF3G3QjDg==")
+    #expect(url.contains("state=QqSBv%2Bzs88jhodF3G3QjDg%3D%3D"))
+    #expect(!url.contains("state=QqSBv+zs88jhodF3G3QjDg"))
+  }
 }
 
 @Suite("App")
@@ -108,9 +124,19 @@ struct AppTests {
       ) { _ in }
 
       // The FIRST attempt's callback must still find its own pending state - not "expired" just
-      // because a second, unrelated /auth/login happened in between.
+      // because a second, unrelated /auth/login happened in between. Re-percent-encode
+      // firstState (mirroring what Auth0's own redirect would send back) rather than
+      // interpolating the decoded value raw - an unescaped "+" in a raw-embedded state would
+      // otherwise be misread as a space by the query decoder, an unrelated encoding bug this
+      // test isn't meant to exercise.
+      // `.urlQueryAllowed` leaves "+" unescaped (a legal RFC 3986 query character) - the same
+      // leniency `Auth0Config`'s own encoding works around - so it can't be used here either.
+      let stateSafeCharacters = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+      let encodedState =
+        firstState.addingPercentEncoding(withAllowedCharacters: stateSafeCharacters) ?? firstState
       try await app.testing().test(
-        .GET, "auth/callback?code=abc&state=\(firstState)",
+        .GET, "auth/callback?code=abc&state=\(encodedState)",
         headers: HTTPHeaders([("Cookie", cookie)])
       ) { res in
         #expect(res.status == .seeOther)
