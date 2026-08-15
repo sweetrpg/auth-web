@@ -19,3 +19,6 @@ data:
   # dev.sweetrpg.com.
   AUTH0_CALLBACK_URL: https://sweetrpg.local/auth/callback
   LOG_LEVEL: info
+  ROOT_URL: https://sweetrpg.local/
+  ASSETS_URL: https://sweetrpg.local/assets
+  SHARED_URL: https://sweetrpg.local/shared

@@ -22,3 +22,5 @@ data:
   # Ingress needs no stripping since there's no prefix beyond what the app itself expects.
   AUTH0_CALLBACK_URL: https://dev.sweetrpg.com/auth/callback
   LOG_LEVEL: info
+  ASSETS_URL: https://dev.sweetrpg.com/assets
+  SHARED_URL: https://dev.sweetrpg.com/shared
