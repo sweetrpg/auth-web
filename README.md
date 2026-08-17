@@ -1,4 +1,11 @@
-# auth-web
+# SweetRPG Auth Web
+
+[![CI](https://github.com/sweetrpg/auth-web/actions/workflows/ci.yaml/badge.svg)](https://github.com/sweetrpg/auth-web/actions/workflows/ci.yaml)
+[![License](https://img.shields.io/github/license/sweetrpg/auth-web.svg)](https://img.shields.io/github/license/sweetrpg/auth-web.svg)
+[![Issues](https://img.shields.io/github/issues/sweetrpg/auth-web.svg)](https://img.shields.io/github/issues/sweetrpg/auth-web.svg)
+[![PRs](https://img.shields.io/github/issues-pr/sweetrpg/auth-web.svg)](https://img.shields.io/github/issues-pr/sweetrpg/auth-web.svg)
+[![Dependabot](https://badgen.net/github/dependabot/sweetrpg/auth-web)](https://badgen.net/github/dependabot/sweetrpg/auth-web)
+[![Deployment](https://argocd.dev.pilgrimagesoftware.com/api/badge?name=sweetrpg-auth-web&revision=true&showAppName=true&namespace=sweetrpg-system)](https://argocd.dev.pilgrimagesoftware.com/applications/sweetrpg-auth-web)
 
 Suite-wide login for the SweetRPG platform. Sole implementer of the Auth0 Authorization Code
 flow (`/auth/login`, `/auth/callback`, `/auth/logout`) and the only frontend holding Auth0 client
