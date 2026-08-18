@@ -10,11 +10,9 @@ import Vapor
 // the session store of record for the whole suite, so a future deep check should probably ping it.
 
 public func configure(_ app: Application) async throws {
-  // Bootstrap structured JSON logging, matching the Go services' convention. Reads LOG_LEVEL
-  // env var (swift-log names: trace/debug/info/notice/warning/error/critical), defaults to info.
-  let logLevelStr = Environment.get("LOG_LEVEL") ?? "info"
-  let logLevel = Logger.Level(rawValue: logLevelStr) ?? .info
-  LoggingSystem.bootstrapJSON(minimumLevel: logLevel)
+  // Structured JSON logging is bootstrapped once in entrypoint.swift, not here - LoggingSystem's
+  // bootstrap can only run once per process; entrypoint.swift also calls configure(_:) for the
+  // real binary, so a second call here would crash on every real startup, not just under test.
 
   // Bootstrap distributed tracing via OTLP/gRPC to the cluster's Tempo collector. Uses
   // OTEL_EXPORTER_OTLP_ENDPOINT env var (same endpoint the Go services export to via HTTP,
