@@ -21,6 +21,13 @@ public func configure(_ app: Application) async throws {
   app.http.server.configuration.hostname = "0.0.0.0"
   app.http.server.configuration.port = Environment.get("PORT").flatMap(Int.init) ?? 8080
 
+  // Creates a server-kind span per request, extracting an inbound traceparent header if present.
+  // request.serviceContext is set for the request's duration, so outgoing calls via
+  // request.client (AsyncHTTPClient) automatically inject the current span's context into their
+  // own headers - see HTTPClientRequest+Prepared.swift upstream. Must run before any middleware
+  // whose own work should appear as a child span of the request.
+  app.middleware.use(TracingMiddleware())
+
   app.middleware.use(SentryMiddleware())
 
   // Shared cookie name, unlike every other frontend's own per-app session - this app is the sole
