@@ -22,15 +22,11 @@ struct AuthAPIClient {
   /// being guarded yet, only "what are this token's verified roles" - any other consuming service
   /// still makes its own `/authz/check` call scoped to its own name before a privileged action.
   func checkAuthz(accessToken: String) async throws -> AuthzCheckResponse {
+    // No manual traceparent handling needed: TracingMiddleware sets request.serviceContext to
+    // this request's span, and AsyncHTTPClient (which request.client uses) automatically injects
+    // that context's traceparent into every outgoing request's headers.
     try await request.client.post(URI(string: "\(baseURL)/authz/check")) { req in
       req.headers.bearerAuthorization = BearerAuthorization(token: accessToken)
-      // Forward whatever trace context this request already arrived with - never fabricate
-      // one. Nothing upstream of this app sets `traceparent` yet, so this is a no-op today;
-      // it activates automatically once frontend-side tracing is separately scoped (see
-      // sweetrpg/platform's migrate-auth-users-api-to-go change design.md).
-      if let traceparent = request.headers.first(name: "traceparent") {
-        req.headers.replaceOrAdd(name: "traceparent", value: traceparent)
-      }
       try req.content.encode(["service": "platform"])
     }.content.decode(AuthzCheckResponse.self)
   }

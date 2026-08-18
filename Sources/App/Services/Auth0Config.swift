@@ -36,8 +36,10 @@ struct Auth0Config {
   /// with `unreservedCharacters` rather than `URLComponents.queryItems`' own (too lenient)
   /// encoding - the query-item builder API without its unsafe-for-us default encoding.
   private static func percentEncodedQuery(_ items: [(name: String, value: String)]) -> String {
-    items.map { "\($0.name)=\($0.value.addingPercentEncoding(withAllowedCharacters: unreservedCharacters) ?? $0.value)" }
-      .joined(separator: "&")
+    items.map { item in
+      let encoded = item.value.addingPercentEncoding(withAllowedCharacters: unreservedCharacters)
+      return "\(item.name)=\(encoded ?? item.value)"
+    }.joined(separator: "&")
   }
 
   func authorizeURL(state: String) -> String {
@@ -61,7 +63,8 @@ struct Auth0Config {
   func logoutURL(returnTo: String) -> String {
     let logoutCompleteBase = callbackURL.replacingOccurrences(
       of: "/auth/callback", with: "/auth/logout-complete")
-    let logoutCompleteURL = "\(logoutCompleteBase)?\(Self.percentEncodedQuery([("return_to", returnTo)]))"
+    let returnToQuery = Self.percentEncodedQuery([("return_to", returnTo)])
+    let logoutCompleteURL = "\(logoutCompleteBase)?\(returnToQuery)"
 
     var components = URLComponents(string: "https://\(domain)/v2/logout")!
     components.percentEncodedQuery = Self.percentEncodedQuery([
