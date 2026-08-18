@@ -22,3 +22,5 @@ data:
   ROOT_URL: https://sweetrpg.local/
   ASSETS_URL: https://sweetrpg.local/assets
   SHARED_URL: https://sweetrpg.local/shared
+  # Tempo's distributor, same as dev overlay (observability stack is environment-independent).
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo-distributor.observability.svc.cluster.local:4317/
