@@ -1,6 +1,9 @@
 
 ## 0.10.0 - 2026-08-19
 
+
+## 0.10.0 - 2026-08-19
+
 ### Added
 - Add ASSETS_URL and SHARED_URL to dev and local configmaps
 - Add structured logging and OTel tracing
