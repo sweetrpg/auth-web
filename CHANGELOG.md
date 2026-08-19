@@ -1,4 +1,23 @@
 
+## 0.10.0 - 2026-08-19
+
+### Added
+- Add ASSETS_URL and SHARED_URL to dev and local configmaps
+- Add structured logging and OTel tracing
+
+
+### Documentation
+- Update title and add badges
+
+
+### Fixed
+- Wrap long lines and fix indentation in Auth0Config
+- Remove duplicate logging bootstrap, guard tracing bootstrap
+- Actually propagate trace context to auth-api
+- Sort imports lexicographically in TracingSetup
+
+
+
 ## 0.9.0 - 2026-08-14
 
 ### Added
