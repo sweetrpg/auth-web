@@ -45,7 +45,7 @@ spec:
                       - secretRef:
                             name: web-auth0
                       - secretRef:
-                            name: redis-auth
+                            name: cache-auth
                   ports:
                       - containerPort: 8080
                         name: http
