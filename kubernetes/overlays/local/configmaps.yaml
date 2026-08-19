@@ -9,7 +9,7 @@ data:
   ENV: local
   PORT: "8080"
   # This app's own dedicated Redis instance - see that file's comment in the dev overlay.
-  REDIS_HOST: redis.sweetrpg-auth.svc.cluster.local
+  REDIS_HOST: cache.sweetrpg-auth.svc.cluster.local
   REDIS_PORT: "6379"
   REDIS_DB: "0"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
@@ -19,3 +19,8 @@ data:
   # dev.sweetrpg.com.
   AUTH0_CALLBACK_URL: https://sweetrpg.local/auth/callback
   LOG_LEVEL: info
+  ROOT_URL: https://sweetrpg.local/
+  ASSETS_URL: https://sweetrpg.local/assets
+  SHARED_URL: https://sweetrpg.local/shared
+  # Tempo's distributor, same as dev overlay (observability stack is environment-independent).
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo-distributor.observability.svc.cluster.local:4317/

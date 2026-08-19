@@ -16,6 +16,11 @@ let package = Package(
         .package(url: "https://github.com/sweetrpg/redis-session-driver.git", from: "0.0.3"),
         // 🚧 admin-api maintenance-mode/banner client - fail-open by contract, never throws.
         .package(url: "https://github.com/sweetrpg/admin-api-client.swift.git", branch: "develop"),
+        // 🩻 Distributed tracing API + OTLP exporter, matching the Go services' OTLP/HTTP
+        // export to the cluster's Tempo collector (docs/service-conventions.md's Telemetry
+        // section).
+        .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0"),
+        .package(url: "https://github.com/swift-otel/swift-otel.git", from: "0.8.0"),
     ],
     targets: [
         .executableTarget(
@@ -25,6 +30,9 @@ let package = Package(
                 .product(name: "Redis", package: "redis"),
                 .product(name: "RedisSessionDriver", package: "redis-session-driver"),
                 .product(name: "AdminAPIClient", package: "admin-api-client.swift"),
+                .product(name: "Tracing", package: "swift-distributed-tracing"),
+                .product(name: "OTel", package: "swift-otel"),
+                .product(name: "OTLPGRPC", package: "swift-otel"),
             ],
             // No Leaf/rendered pages: every "log in" link across the suite points straight at
             // /auth/login, which redirects immediately - this app has no page of its own to show.

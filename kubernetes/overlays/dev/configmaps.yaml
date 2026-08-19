@@ -11,7 +11,7 @@ data:
   # This app's own dedicated Redis instance in sweetrpg-auth, doubling as the suite-wide
   # session store every other frontend reads cross-namespace. See docs/frontend-conventions.md's
   # "Per-namespace Redis instances" section (sweetrpg/platform) for the full registry.
-  REDIS_HOST: redis.sweetrpg-auth.svc.cluster.local
+  REDIS_HOST: cache.sweetrpg-auth.svc.cluster.local
   REDIS_PORT: "6379"
   REDIS_DB: "0"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
@@ -22,3 +22,10 @@ data:
   # Ingress needs no stripping since there's no prefix beyond what the app itself expects.
   AUTH0_CALLBACK_URL: https://dev.sweetrpg.com/auth/callback
   LOG_LEVEL: info
+  ASSETS_URL: https://dev.sweetrpg.com/assets
+  SHARED_URL: https://dev.sweetrpg.com/shared
+  # Tempo's distributor, same collector as the Go services (docs/service-conventions.md's
+  # Telemetry section), but port 4317 (gRPC) rather than their 4318 (HTTP) - see the comment in
+  # TracingSetup.swift for why (swift-otel only ships a gRPC exporter in the version pinned
+  # here).
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo-distributor.observability.svc.cluster.local:4317/
