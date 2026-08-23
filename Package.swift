@@ -21,6 +21,8 @@ let package = Package(
         // export to the cluster's Tempo collector (docs/service-conventions.md's Telemetry
         // section).
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0"),
+        // 🌐 Framework-agnostic localization - see openspec/changes/full-localization-web-apps.
+        .package(url: "https://github.com/miroslavkovac/Lingo.git", from: "4.0.0"),
         .package(url: "https://github.com/swift-otel/swift-otel.git", from: "0.8.0"),
     ],
     targets: [
@@ -34,6 +36,10 @@ let package = Package(
                 .product(name: "Tracing", package: "swift-distributed-tracing"),
                 .product(name: "OTel", package: "swift-otel"),
                 .product(name: "OTLPGRPC", package: "swift-otel"),
+                .product(name: "Lingo", package: "Lingo"),
+            ],
+            resources: [
+                .copy("Resources/Localizations")
             ],
             // No Leaf/rendered pages: every "log in" link across the suite points straight at
             // /auth/login, which redirects immediately - this app has no page of its own to show.

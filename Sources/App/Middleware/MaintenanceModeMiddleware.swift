@@ -24,7 +24,7 @@ struct MaintenanceModeMiddleware: AsyncMiddleware {
 
     let response = Response(status: .serviceUnavailable)
     response.headers.contentType = .html
-    response.body = .init(string: MaintenancePage.render(active))
+    response.body = .init(string: MaintenancePage.render(active, l10n: req.l10n))
     return response
   }
 }

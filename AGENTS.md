@@ -91,6 +91,25 @@ before the request reaches the app), this app's Ingress does **not** strip `/aut
 are already registered as `/auth/login`, `/auth/callback`, `/auth/logout`, matching the
 browser-facing path one-to-one. See `kubernetes/overlays/dev/ingress.yaml`.
 
+### Localization
+
+Implements sweetrpg/platform's openspec change `full-localization-web-apps`.
+
+- Library: `miroslavkovac/Lingo` (framework-agnostic); loaded in `Sources/App/I18n.swift`.
+- String tables live in `Resources/Localizations/<code>.json` as flat dotted keys
+  (`maintenance.since_prefix` etc.). English (`en.json`) is the default and fallback.
+- Locale resolution order per request: `locale` cookie (when it maps to a loaded table), then
+  the first Accept-Language tag's base subtag, then English. The resolved flat table is exposed
+  via `Request.l10n`; render contexts embed it and reference strings by key.
+- Template convention: no hardcoded user-facing text - interpolate from the `l10n` table instead.
+  For interpolated sentences use prefix/suffix key pairs so fragments stay translatable.
+  Do not localize brand names (SweetRPG, GitHub, Auth0, Pilgrimage Software), footer build
+  lines, emails, or raw enum/status identifiers.
+- Adding a locale: drop a new `<code>.json` alongside `en.json` with the same keys; missing keys
+  fall back to English automatically.
+- CI gate: the `locale-lint` job in `.github/workflows/{ci,pr}.yaml` runs
+  `scripts/check-template-strings.sh`, which fails on hardcoded template text.
+
 ## Committing Code
 
 [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`.

@@ -6,8 +6,8 @@ import Foundation
 /// Package.swift's dependencies comment) - so this is a small dependency-free HTML string rather
 /// than pulling in Leaf for a single static page.
 enum MaintenancePage {
-  static func render(_ mode: MaintenanceMode) -> String {
-    let windowLine = formattedWindow(startsAt: mode.startsAt, endsAt: mode.endsAt)
+  static func render(_ mode: MaintenanceMode, l10n: [String: String] = [:]) -> String {
+    let windowLine = formattedWindow(startsAt: mode.startsAt, endsAt: mode.endsAt, l10n: l10n)
     return """
       <!DOCTYPE html>
       <html lang="en">
@@ -44,12 +44,17 @@ enum MaintenancePage {
       """
   }
 
-  private static func formattedWindow(startsAt: String, endsAt: String?) -> String? {
+  private static func formattedWindow(startsAt: String, endsAt: String?, l10n: [String: String])
+    -> String?
+  {
     guard !startsAt.isEmpty else { return nil }
+    let prefix = I18n.localize("maintenance.since_prefix", in: l10n)
+    let suffix = I18n.localize("maintenance.since_suffix", in: l10n)
     if let endsAt, !endsAt.isEmpty {
-      return "\(escape(startsAt)) &ndash; \(escape(endsAt))"
+      let separator = I18n.localize("maintenance.window_separator", in: l10n)
+      return "\(escape(startsAt)) \(separator) \(escape(endsAt))"
     }
-    return "Since \(escape(startsAt))"
+    return "\(escape(prefix))\(escape(startsAt))\(escape(suffix))"
   }
 
   private static func escape(_ raw: String) -> String {
