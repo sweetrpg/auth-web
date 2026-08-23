@@ -1,4 +1,15 @@
 
+## 0.11.0 - 2026-08-23
+
+### Added
+- Wire session expiry policy from environment
+
+
+### Fixed
+- Fix cpu resource limit quantity that never matched ArgoCD's applied manifest
+
+
+
 ## 0.10.0 - 2026-08-19
 
 ### Added
