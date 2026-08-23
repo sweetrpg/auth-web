@@ -18,12 +18,15 @@ enum I18n {
   /// Loads every `Resources/Localizations/<code>.json` into memory at startup.
   static func load() {
     let dir: String?
-#if canImport(ObjectiveC)
-    dir = Bundle.module.resourcePath.map { ($0 as NSString).appendingPathComponent("Localizations") }
-#else
-    dir = nil
-#endif
-    guard let path = dir, let files = try? FileManager.default.contentsOfDirectory(atPath: path) else {
+    #if canImport(ObjectiveC)
+      dir = Bundle.module.resourcePath.map {
+        ($0 as NSString).appendingPathComponent("Localizations")
+      }
+    #else
+      dir = nil
+    #endif
+    guard let path = dir, let files = try? FileManager.default.contentsOfDirectory(atPath: path)
+    else {
       return
     }
     var loaded: [String: [String: String]] = [:]
@@ -45,8 +48,9 @@ enum I18n {
   /// Resolves the request locale and returns its flat string table (falling back to English
   /// for missing keys is done by `localize`). Exposed so render contexts can carry it.
   static func table(for req: Request) -> [String: String] {
-    let locale = resolveLocale(cookie: req.cookies["locale"]?.string,
-                               acceptLanguage: req.headers[.acceptLanguage].first)
+    let locale = resolveLocale(
+      cookie: req.cookies["locale"]?.string,
+      acceptLanguage: req.headers[.acceptLanguage].first)
     return strings(for: locale)
   }
 
