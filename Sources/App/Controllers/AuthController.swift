@@ -1,5 +1,10 @@
-import RedisSessionDriver
 import Vapor
+
+/// Fallback access-token lifetime when Auth0 omits `expires_in`: 24 hours, matching Auth0's
+/// typical access-token lifetime (confirm against the tenant's actual dashboard setting). This
+/// bounds only the token stored in `SessionUser.expiry` - the session record itself lives under
+/// `ResilientRedisSessionDriver`'s idle/absolute expiry policy and is unrelated.
+private let fallbackTokenLifetime: TimeInterval = 60 * 60 * 24
 
 /// Sole implementer of the Auth0 Authorization Code flow for the whole suite - see design.md's
 /// "auth-web is the sole owner of the Authorization Code exchange" decision in platform's
@@ -105,9 +110,8 @@ struct AuthController: RouteCollection {
       let accessToken: String
       let idToken: String
       /// Seconds until the access token expires, per Auth0's token response - drives this
-      /// session's `expiry` (see `SessionUser.expiry`). Falls back to
-      /// `ResilientRedisSessionDriver.defaultTTL` if Auth0 omits it, so a session always has a
-      /// bound rather than living forever.
+      /// session's `expiry` (see `SessionUser.expiry`). Falls back to `fallbackTokenLifetime`
+      /// if Auth0 omits it, so a session always has a bound rather than living forever.
       let expiresIn: Int?
 
       enum CodingKeys: String, CodingKey {
@@ -160,8 +164,7 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
-    let ttl =
-      tokenResponse.expiresIn.map(TimeInterval.init) ?? ResilientRedisSessionDriver.defaultTTL
+    let ttl = tokenResponse.expiresIn.map(TimeInterval.init) ?? fallbackTokenLifetime
     req.currentUser = SessionUser(
       sub: sub, name: name, email: email, roles: authz.roles ?? [],
       accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl))
