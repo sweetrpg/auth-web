@@ -27,3 +27,11 @@ swift test
 returns a 503 rather than starting a broken flow. Without `REDIS_HOST` set, falls back to
 in-memory sessions - fine for local development, not for anything another frontend needs to read
 from.
+
+## Session expiry
+
+Sessions stored in Redis expire after `SESSION_IDLE_TTL_DAYS` (default 30) of inactivity -
+renewed on every read and write - and can never outlive `SESSION_ABSOLUTE_TTL_DAYS`
+(default 90) from creation, regardless of activity. Both are set by the
+`sweetrpg/redis-session-driver` package this app configures; changing them takes effect for
+sessions created or renewed after a restart.

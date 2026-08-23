@@ -48,8 +48,25 @@ public func configure(_ app: Application) async throws {
     // Not `.redis` (Vapor's stock RedisSessionsDriver): that driver propagates Redis errors
     // straight through SessionsMiddleware, which runs on every request, so a Redis outage would
     // 500 the whole app. ResilientRedisSessionDriver (sweetrpg/redis-session-driver) degrades to
-    // "treated as logged out" instead - see its doc comment.
-    app.sessions.use { _ in ResilientRedisSessionDriver() }
+    // "treated as logged out" instead - see its doc comment. Its expiry policy comes from the
+    // environment in days (platform's openspec/changes/session-expiration-policy): a rolling
+    // idle TTL renewed on every read/write, plus a non-renewable cap measured from creation.
+    let day: TimeInterval = 86_400
+    let idleTTL = Environment.get("SESSION_IDLE_TTL_DAYS").flatMap(Double.init).map { $0 * day }
+    let absoluteTTL =
+      Environment.get("SESSION_ABSOLUTE_TTL_DAYS").flatMap(Double.init).map { $0 * day }
+    if (Environment.get("SESSION_IDLE_TTL_DAYS") != nil && idleTTL == nil)
+      || (Environment.get("SESSION_ABSOLUTE_TTL_DAYS") != nil && absoluteTTL == nil)
+    {
+      app.logger.warning(
+        "SESSION_IDLE_TTL_DAYS/SESSION_ABSOLUTE_TTL_DAYS set but not numeric - using driver defaults"
+      )
+    }
+    app.sessions.use { _ in
+      ResilientRedisSessionDriver(
+        idleTTL: idleTTL ?? ResilientRedisSessionDriver.defaultIdleTTL,
+        absoluteTTL: absoluteTTL ?? ResilientRedisSessionDriver.defaultAbsoluteTTL)
+    }
   } else {
     app.logger.warning(
       "REDIS_HOST not set - using in-memory sessions. Fine for local development only: every other frontend expects to read sessions from the shared Redis store."

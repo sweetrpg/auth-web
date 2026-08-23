@@ -14,6 +14,11 @@ data:
   REDIS_HOST: cache.sweetrpg-auth.svc.cluster.local
   REDIS_PORT: "6379"
   REDIS_DB: "0"
+  # Session expiry policy in days (sweetrpg/redis-session-driver): idle expiry renews on every
+  # read/write; the absolute cap is measured from creation and cannot be renewed past. These
+  # match the driver defaults - spelled out here so the policy is discoverable/tunable.
+  SESSION_IDLE_TTL_DAYS: "30"
+  SESSION_ABSOLUTE_TTL_DAYS: "90"
   # Server-to-server backend URL, called directly Service-to-Service - no ingress in the path.
   AUTH_API_URL: http://api-v1.sweetrpg-auth.svc.cluster.local:8000
   # Unlike catalog-web/admin-web, this app's Ingress does NOT strip the /auth prefix (see
