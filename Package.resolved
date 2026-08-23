@@ -1,5 +1,5 @@
 {
-  "originHash" : "50f1b3eb740c4f1605663c3f0dc7dd02437a31c832873ed835859cad40d19d8d",
+  "originHash" : "71149a4699990c1ea19d3cfc6450c1af99e72b1671ffc572a8b022f7c6b5c266",
   "pins" : [
     {
       "identity" : "admin-api-client.swift",
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "6a8927df5a91710b414caba4f8a088dead4633db",
         "version" : "1.27.5"
+      }
+    },
+    {
+      "identity" : "lingo",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/miroslavkovac/Lingo.git",
+      "state" : {
+        "revision" : "c6f6a80af46dff193b60bd07bc82be444ef9a7d2",
+        "version" : "4.0.0"
       }
     },
     {
