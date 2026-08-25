@@ -23,4 +23,23 @@ struct SessionUser: Codable {
   /// Redis key level by `ResilientRedisSessionDriver`'s TTL; this field is what lets
   /// application code explain *why* a session ended and display "signed in until X."
   let expiry: Date
+  /// `users-api`'s internal `User.id`, set when this login's provisioning call succeeded - see
+  /// `sweetrpg/platform`'s `add-users-api-provisioning` design.md. `nil` when provisioning
+  /// failed or `users-api` was unreachable; that degrades this session to lacking a `User.id`
+  /// rather than failing login. Optional (not a default-valued property) so a session encoded
+  /// before this field existed still decodes.
+  let userID: String?
+
+  init(
+    sub: String, name: String, email: String?, roles: [String], accessToken: String,
+    expiry: Date, userID: String? = nil
+  ) {
+    self.sub = sub
+    self.name = name
+    self.email = email
+    self.roles = roles
+    self.accessToken = accessToken
+    self.expiry = expiry
+    self.userID = userID
+  }
 }

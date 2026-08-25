@@ -82,5 +82,8 @@ public func configure(_ app: Application) async throws {
   // and logout routes are deliberately excluded.
   app.middleware.use(MaintenanceModeMiddleware())
 
+  // Load Resources/Localizations/<code>.json tables - see I18n's doc comment.
+  I18n.load()
+
   try routes(app)
 }

@@ -298,4 +298,69 @@ struct SessionUserAccessTests {
       }
     }
   }
+
+  @Test("currentUser round-trips userID when set")
+  func currentUserRoundTripsUserID() async throws {
+    try await withApp(configure: configure) { app in
+      app.get("test-set-current-user-with-id") { req -> HTTPStatus in
+        req.currentUser = SessionUser(
+          sub: "auth0|abc", name: "Ada", email: "ada@example.com", roles: ["user"],
+          accessToken: "token", expiry: Date().addingTimeInterval(3600), userID: "user-123")
+        return .ok
+      }
+      app.get("test-get-current-user-id") { req -> String in
+        req.currentUser?.userID ?? "nil"
+      }
+
+      var cookie = ""
+      try await app.testing().test(.GET, "test-set-current-user-with-id") { res in
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+      }
+      try await app.testing().test(
+        .GET, "test-get-current-user-id", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.body.string == "user-123")
+      }
+    }
+  }
+}
+
+@Suite("SessionUser")
+struct SessionUserTests {
+  @Test("decoding a session payload with no userID field succeeds with userID nil")
+  func decodesWithoutUserIDField() throws {
+    // Shape of a session encoded before this field existed - every existing session in Redis
+    // at deploy time looks like this until its next login re-encodes it.
+    let json = """
+      {"sub":"auth0|abc","name":"Ada","email":"ada@example.com","roles":["user"],\
+      "accessToken":"tok","expiry":"2027-01-15T00:00:00Z"}
+      """
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    let user = try decoder.decode(SessionUser.self, from: Data(json.utf8))
+    #expect(user.userID == nil)
+    #expect(user.sub == "auth0|abc")
+  }
+}
+
+@Suite("AuthController.provisionedUserID", .serialized)
+struct ProvisionedUserIDTests {
+  @Test("a users-api provisioning failure degrades to nil rather than throwing")
+  func provisioningFailureDegradesToNil() async throws {
+    try await withApp(configure: configure) { app in
+      // 127.0.0.1:1 fails fast with connection-refused, matching the existing pattern in
+      // loginRaceDoesNotInvalidateFirstAttempt above - no real users-api needed to prove the
+      // degrade-on-failure path works.
+      setenv("USERS_API_URL", "http://127.0.0.1:1", 1)
+      defer { unsetenv("USERS_API_URL") }
+
+      app.get("test-provision") { req -> String in
+        await AuthController.provisionedUserID(
+          req: req, sub: "auth0|abc", name: "Ada", email: "ada@example.com") ?? "nil"
+      }
+      try await app.testing().test(.GET, "test-provision") { res in
+        #expect(res.body.string == "nil")
+      }
+    }
+  }
 }

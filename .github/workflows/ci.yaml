@@ -13,3 +13,10 @@ jobs:
     with:
       swift-version: "6.2"
     secrets: inherit
+
+  locale-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check for hardcoded user-facing template strings
+        run: ./scripts/check-template-strings.sh
