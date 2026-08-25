@@ -1,4 +1,11 @@
 
+## 0.12.1 - 2026-08-25
+
+### Fixed
+- Forward user bearer token instead of shared secret
+
+
+
 ## 0.12.0 - 2026-08-25
 
 ### Added
