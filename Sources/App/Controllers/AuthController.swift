@@ -164,7 +164,8 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
-    let userID = await Self.provisionedUserID(req: req, sub: sub, name: name, email: email)
+    let userID = await Self.provisionedUserID(
+      req: req, accessToken: tokenResponse.accessToken, name: name, email: email)
 
     let ttl = tokenResponse.expiresIn.map(TimeInterval.init) ?? fallbackTokenLifetime
     req.currentUser = SessionUser(
@@ -180,11 +181,12 @@ struct AuthController: RouteCollection {
   /// A separate method (rather than inlined in `callback`) so this degrade-on-failure behavior
   /// is directly unit-testable without also stubbing the Auth0 token exchange it normally
   /// follows.
-  static func provisionedUserID(req: Request, sub: String, name: String, email: String?) async
-    -> String?
+  static func provisionedUserID(req: Request, accessToken: String, name: String, email: String?)
+    async -> String?
   {
     do {
-      return try await req.usersAPI.provision(subject: sub, name: name, email: email).userId
+      return try await req.usersAPI.provision(accessToken: accessToken, name: name, email: email)
+        .userId
     } catch {
       req.logger.warning("users-api provisioning call failed: \(error)")
       return nil
