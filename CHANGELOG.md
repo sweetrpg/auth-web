@@ -1,4 +1,12 @@
 
+## 0.12.0 - 2026-08-25
+
+### Added
+- Extract user-facing strings into locale resources
+- Provision a users-api identity during login callback
+
+
+
 ## 0.11.0 - 2026-08-23
 
 ### Added
