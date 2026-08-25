@@ -1,22 +1,20 @@
 import Vapor
 
 /// Calls `users-api`'s `POST /internal/identities/provision` during `/auth/callback` to
-/// find-or-create the `User`/`LoginProfile` pair for a verified Auth0 subject - see
-/// `sweetrpg/platform`'s `add-users-api-provisioning` design.md. `auth-web` has no end-user
-/// bearer token to forward at this point in the flow (it's mid token-exchange), so this call is
-/// gated by a shared-secret header instead of a forwarded token, unlike `AuthAPIClient`.
+/// find-or-create the `User`/`LoginProfile` pair for the just-verified Auth0 subject - see
+/// `sweetrpg/platform`'s `add-users-api-provisioning` design.md. Presents the same Auth0 access
+/// token already used for the `auth-api` authz check as a bearer credential, matching the rest
+/// of the platform's `api-client-auth` convention (a forwarded user token, not a shared service
+/// secret) - `users-api` independently re-verifies it and derives the subject from the verified
+/// token itself, not from a client-supplied value.
 struct UsersAPIClient {
   let request: Request
 
   private var baseURL: String {
     Environment.get("USERS_API_URL") ?? "http://api-v1.sweetrpg-users.svc.cluster.local:8000"
   }
-  private var internalServiceToken: String {
-    Environment.get("INTERNAL_SERVICE_TOKEN") ?? ""
-  }
 
   struct ProvisionRequest: Content {
-    let subject: String
     let name: String
     let email: String?
   }
@@ -26,10 +24,12 @@ struct UsersAPIClient {
     let created: Bool
   }
 
-  func provision(subject: String, name: String, email: String?) async throws -> ProvisionResponse {
+  func provision(accessToken: String, name: String, email: String?) async throws
+    -> ProvisionResponse
+  {
     try await request.client.post(URI(string: "\(baseURL)/internal/identities/provision")) { req in
-      req.headers.add(name: "X-Internal-Service-Token", value: internalServiceToken)
-      try req.content.encode(ProvisionRequest(subject: subject, name: name, email: email))
+      req.headers.bearerAuthorization = BearerAuthorization(token: accessToken)
+      try req.content.encode(ProvisionRequest(name: name, email: email))
     }.content.decode(ProvisionResponse.self)
   }
 }
