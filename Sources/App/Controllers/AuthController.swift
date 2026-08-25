@@ -164,11 +164,31 @@ struct AuthController: RouteCollection {
       return errorRedirect(req, to: returnTo, reason: .forbidden)
     }
 
+    let userID = await Self.provisionedUserID(req: req, sub: sub, name: name, email: email)
+
     let ttl = tokenResponse.expiresIn.map(TimeInterval.init) ?? fallbackTokenLifetime
     req.currentUser = SessionUser(
       sub: sub, name: name, email: email, roles: authz.roles ?? [],
-      accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl))
+      accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl),
+      userID: userID)
     return req.redirect(to: returnTo)
+  }
+
+  /// Calls `users-api`'s find-or-create provisioning path and returns the resulting `User.id`,
+  /// or `nil` if the call fails - a provisioning outage degrades this login to a session
+  /// without a `User.id` rather than blocking it (see design.md's "Failure mode" decision).
+  /// A separate method (rather than inlined in `callback`) so this degrade-on-failure behavior
+  /// is directly unit-testable without also stubbing the Auth0 token exchange it normally
+  /// follows.
+  static func provisionedUserID(req: Request, sub: String, name: String, email: String?) async
+    -> String?
+  {
+    do {
+      return try await req.usersAPI.provision(subject: sub, name: name, email: email).userId
+    } catch {
+      req.logger.warning("users-api provisioning call failed: \(error)")
+      return nil
+    }
   }
 
   @Sendable
