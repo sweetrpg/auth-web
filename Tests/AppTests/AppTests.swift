@@ -356,7 +356,7 @@ struct ProvisionedUserIDTests {
 
       app.get("test-provision") { req -> String in
         await AuthController.provisionedUserID(
-          req: req, sub: "auth0|abc", name: "Ada", email: "ada@example.com") ?? "nil"
+          req: req, accessToken: "token", name: "Ada", email: "ada@example.com") ?? "nil"
       }
       try await app.testing().test(.GET, "test-provision") { res in
         #expect(res.body.string == "nil")
