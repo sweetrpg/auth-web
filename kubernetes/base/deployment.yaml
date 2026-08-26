@@ -20,6 +20,8 @@ spec:
         metadata:
             annotations:
                 reloader.stakater.com/auto: "true"
+                openfeature.dev/enabled: "true"
+                openfeature.dev/featureflagsource: "sweetrpg-system/auth-web"
         spec:
             serviceAccountName: web
             enableServiceLinks: false
