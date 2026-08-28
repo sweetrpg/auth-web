@@ -146,6 +146,46 @@ struct AppTests {
     }
   }
 
+  // Regression test: LoginQuery had no CodingKeys mapping "returnTo" -> "return_to" (unlike
+  // LogoutQuery, which does), so Vapor's query decoder - which doesn't snake_case-convert on its
+  // own - silently decoded return_to as nil on every /auth/login, and every post-login redirect
+  // landed on "/" instead of wherever the visitor actually started. Same round-trip pattern as
+  // the race test above: Auth0 is unreachable, so the token exchange itself always fails, but
+  // errorRedirect still targets whatever returnTo the login step captured - proving the value
+  // survived from /auth/login all the way through /auth/callback regardless of that failure.
+  @Test("return_to on /auth/login is captured and honored after callback, not dropped to /")
+  func loginCapturesReturnTo() async throws {
+    try await withApp(configure: configure) { app in
+      app.auth0Config = Auth0Config(
+        domain: "127.0.0.1:1", clientID: "client-id", clientSecret: "secret",
+        callbackURL: "http://localhost/auth/callback", audience: nil)
+
+      var cookie = ""
+      var state = ""
+      try await app.testing().test(.GET, "auth/login?return_to=%2Fcatalog%2Fbrowse") { res in
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+        let location = res.headers.first(name: .location) ?? ""
+        state =
+          URLComponents(string: location)?.queryItems?.first(where: { $0.name == "state" })?
+          .value ?? ""
+      }
+      #expect(!cookie.isEmpty)
+      #expect(!state.isEmpty)
+
+      let stateSafeCharacters = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+      let encodedState = state.addingPercentEncoding(withAllowedCharacters: stateSafeCharacters) ?? state
+      try await app.testing().test(
+        .GET, "auth/callback?code=abc&state=\(encodedState)",
+        headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.status == .seeOther)
+        let location = res.headers.first(name: .location) ?? ""
+        #expect(location.hasPrefix("/catalog/browse"))
+      }
+    }
+  }
+
   @Test("login renders the maintenance page when a maintenance mode is active")
   func loginRendersMaintenancePage() async throws {
     let active = try makeMaintenanceMode(
