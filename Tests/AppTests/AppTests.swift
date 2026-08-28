@@ -174,7 +174,8 @@ struct AppTests {
 
       let stateSafeCharacters = CharacterSet(
         charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-      let encodedState = state.addingPercentEncoding(withAllowedCharacters: stateSafeCharacters) ?? state
+      let encodedState =
+        state.addingPercentEncoding(withAllowedCharacters: stateSafeCharacters) ?? state
       try await app.testing().test(
         .GET, "auth/callback?code=abc&state=\(encodedState)",
         headers: HTTPHeaders([("Cookie", cookie)])
