@@ -71,7 +71,10 @@ struct AuthController: RouteCollection {
       req.logger.warning("AUTH0_DOMAIN/AUTH0_CLIENT_ID not set - cannot start login flow")
       throw Abort(.serviceUnavailable, reason: "Login is not configured")
     }
-    struct LoginQuery: Content { let returnTo: String? }
+    struct LoginQuery: Content {
+      let returnTo: String?
+      enum CodingKeys: String, CodingKey { case returnTo = "return_to" }
+    }
     let query = try req.query.decode(LoginQuery.self)
 
     let state = [UInt8].random(count: 16).base64String()
