@@ -1,4 +1,11 @@
 
+## 0.12.2 - 2026-08-28
+
+### Fixed
+- Decode return_to on /auth/login - was silently ignored
+
+
+
 ## 0.12.1 - 2026-08-25
 
 ### Fixed
