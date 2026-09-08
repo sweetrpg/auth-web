@@ -16,6 +16,13 @@ struct AuthController: RouteCollection {
     routes.get("auth", "callback", use: callback)
     routes.post("auth", "logout", use: logout)
     routes.get("auth", "logout-complete", use: logoutComplete)
+    // Auth0 RP-initiated login: when the tenant's "Initiate Login URI" points at this host's
+    // bare `/login` (or isn't set to `/auth/login`), Auth0 bounces the visitor there with an
+    // `?iss=` param instead of rendering its Universal Login form. Alias it to the same
+    // handler so that round trip completes instead of 404ing. `redirectToAuth0` ignores the
+    // extra `iss` param and, with no `return_to`, sends the user back to `/` after login. The
+    // long-term fix is to set the Auth0 Application's Initiate Login URI to `/auth/login`.
+    routes.get("login", use: redirectToAuth0)
   }
 
   /// Keys a pending login's `return_to` by its own `state` value rather than a single shared

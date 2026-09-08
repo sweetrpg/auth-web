@@ -13,21 +13,15 @@ spec:
         type: RollingUpdate
     selector:
         matchLabels:
-            app: web
-            version: v1
-            platform: sweetrpg
-            package: auth
-            component: web
+            app.kubernetes.io/name: auth-web
+            app.kubernetes.io/version: v1
+            app.kubernetes.io/component: web
     template:
         metadata:
-            labels:
-                platform: sweetrpg
-                app: web
-                package: auth
-                component: web
-                version: v1
             annotations:
                 reloader.stakater.com/auto: "true"
+                openfeature.dev/enabled: "true"
+                openfeature.dev/featureflagsource: "sweetrpg-system/auth-web"
         spec:
             serviceAccountName: web
             enableServiceLinks: false

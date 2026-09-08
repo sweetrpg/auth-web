@@ -12,11 +12,13 @@ resources:
 
 labels:
   - pairs:
-      app: web
-      version: v1
-      platform: sweetrpg
-      package: auth
-      component: web
+      app.kubernetes.io/name: auth-web
+      app.kubernetes.io/version: v1
+      app.kubernetes.io/component: web
+      app.kubernetes.io/part-of: auth
+      com.sweetrpg/env: local
+    includeSelectors: false
+    includeTemplates: true
 
 generatorOptions:
   disableNameSuffixHash: true
