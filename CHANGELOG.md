@@ -1,4 +1,11 @@
 
+## 0.12.4 - 2026-09-08
+
+### Fixed
+- Route /login to the auth-web pod for Auth0 RP-initiated login
+
+
+
 ## 0.12.3 - 2026-09-08
 
 ### Documentation
