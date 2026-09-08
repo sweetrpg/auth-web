@@ -20,7 +20,7 @@ a dedicated `auth-api` - see `openspec/changes/split-authz-into-auth-api` for wh
 
 - **auth-api**: called once at login, `POST /authz/check`, to establish the session's verified
   roles server-side - not a local unverified token decode.
-- **Redis**: this app's own dedicated instance, `redis.sweetrpg-auth.svc.cluster.local`, deployed
+- **Redis**: this app's own dedicated instance, `cache.sweetrpg-auth.svc.cluster.local`, deployed
   alongside it in `sweetrpg-auth`. It doubles as the suite-wide session store - see
   `sweetrpg/platform`'s `docs/frontend-conventions.md` ("Per-namespace Redis instances") for how
   other frontends read it cross-namespace.
