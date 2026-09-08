@@ -23,3 +23,11 @@ spec:
                 name: web-v1
                 port:
                   name: http
+          # /login -> /auth/login alias for Auth0 RP-initiated login; see dev overlay comment.
+          - pathType: Exact
+            path: /login
+            backend:
+              service:
+                name: web-v1
+                port:
+                  name: http
