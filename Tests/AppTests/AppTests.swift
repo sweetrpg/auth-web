@@ -86,6 +86,17 @@ struct AppTests {
     }
   }
 
+  @Test("bare /login is aliased to the Auth0 login handler, not a 404")
+  func bareLoginAliasesToAuth0Handler() async throws {
+    try await withApp(configure: configure) { app in
+      // Same handler as /auth/login, so with Auth0 unconfigured it 503s rather than 404s -
+      // the Auth0 RP-initiated-login bounce (?iss=...) lands somewhere real.
+      try await app.testing().test(.GET, "login?iss=https%3A%2F%2Fexample.auth0.com%2F") { res in
+        #expect(res.status == .serviceUnavailable)
+      }
+    }
+  }
+
   @Test("callback with mismatched state redirects with an error flag")
   func callbackStateMismatch() async throws {
     try await withApp(configure: configure) { app in
