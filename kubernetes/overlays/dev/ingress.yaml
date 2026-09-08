@@ -31,6 +31,16 @@ spec:
                 name: web-v1
                 port:
                   name: http
+          # Auth0's RP-initiated login sends the visitor to the app's "Initiate Login URI"
+          # (/login?iss=...), which the app aliases to the /auth/login handler. Route just that
+          # exact path here so the redirect reaches the pod instead of 404ing at the edge.
+          - pathType: Exact
+            path: /login
+            backend:
+              service:
+                name: web-v1
+                port:
+                  name: http
   tls:
     - hosts:
         - dev.sweetrpg.com
