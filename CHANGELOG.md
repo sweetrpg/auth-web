@@ -1,4 +1,15 @@
 
+## 0.12.3 - 2026-09-08
+
+### Documentation
+- Correct shared session Redis host to cache.sweetrpg-auth
+
+
+### Fixed
+- Alias bare /login to the Auth0 login handler
+
+
+
 ## 0.12.2 - 2026-08-28
 
 ### Fixed
