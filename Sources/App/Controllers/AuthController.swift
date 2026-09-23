@@ -23,6 +23,11 @@ struct AuthController: RouteCollection {
     // extra `iss` param and, with no `return_to`, sends the user back to `/` after login. The
     // long-term fix is to set the Auth0 Application's Initiate Login URI to `/auth/login`.
     routes.get("login", use: redirectToAuth0)
+
+    // Account linking: attaches a second Auth0 identity to the currently signed-in session's
+    // User.id without ending that session - see sweetrpg/platform's link-user-accounts design.md.
+    routes.get("auth", "link", "start", use: linkStart)
+    routes.get("auth", "link", "callback", use: linkCallback)
   }
 
   /// Keys a pending login's `return_to` by its own `state` value rather than a single shared
@@ -230,5 +235,132 @@ struct AuthController: RouteCollection {
     }
     let query = try req.query.decode(LogoutCompleteQuery.self)
     return req.redirect(to: sanitizedReturnTo(query.returnTo))
+  }
+
+  /// A small, closed set of user-safe categories for a failed link attempt - same reasoning as
+  /// `LoginErrorReason`, plus `.conflict` for the one outcome the caller needs to distinguish
+  /// from a generic failure (see design.md's "Conflict rule: reject, never merge").
+  private enum LinkErrorReason: String {
+    case denied
+    case expired
+    case unavailable
+    case conflict
+  }
+
+  private func linkErrorRedirect(_ req: Request, to returnTo: String, reason: LinkErrorReason)
+    -> Response
+  {
+    req.redirect(to: "\(returnTo)?link_error=\(reason.rawValue)")
+  }
+
+  /// Keyed by the link ticket itself (used as Auth0's `state`) rather than a separate locally
+  /// generated value - `users-api` already mints this ticket as a single-use, signed credential
+  /// scoped to the linking session's `User.id` (see design.md), so reusing it as `state` needs no
+  /// second value to keep in sync. Kept in its own session key namespace (`auth_link_pending_*`)
+  /// distinct from `pendingLoginKey` so an in-flight login and an in-flight link never collide.
+  private static func pendingLinkKey(state: String) -> String { "auth_link_pending_\(state)" }
+
+  /// Starts the account-linking round trip for the currently signed-in session. Requires an
+  /// active session (401 otherwise - this is an action a signed-in visitor takes from an
+  /// account-settings page, not a page of its own to redirect through) and a provisioned
+  /// `User.id` to attach the second identity to. Never touches the original session.
+  ///
+  /// Forwards the session's own Auth0 access token to `users-api`'s link/start call rather than
+  /// sending a `User.id` in the request body - `users-api` resolves the account to link against
+  /// from that verified token's own subject server-side (see `UsersAPIClient.linkStart`'s doc
+  /// comment for why). The local `user.userID != nil` check below is only a cheap pre-flight
+  /// short-circuit (avoids a network round trip for a session that never provisioned an account
+  /// in the first place); `users-api` remains the actual source of truth for whether an account
+  /// exists to link against.
+  @Sendable
+  func linkStart(req: Request) async throws -> Response {
+    guard let user = req.currentUser else {
+      throw Abort(.unauthorized, reason: "An active session is required to link another identity")
+    }
+    guard user.userID != nil else {
+      throw Abort(.unprocessableEntity, reason: "This session has no account to link against")
+    }
+    let config = req.application.auth0Config
+    guard config.isConfigured else {
+      req.logger.warning("AUTH0_DOMAIN/AUTH0_CLIENT_ID not set - cannot start link flow")
+      throw Abort(.serviceUnavailable, reason: "Login is not configured")
+    }
+    struct LinkStartQuery: Content {
+      let returnTo: String?
+      enum CodingKeys: String, CodingKey { case returnTo = "return_to" }
+    }
+    let query = try req.query.decode(LinkStartQuery.self)
+
+    let ticket: String
+    do {
+      ticket = try await req.usersAPI.linkStart(accessToken: user.accessToken).ticket
+    } catch {
+      req.logger.error("users-api link/start call failed: \(error)")
+      throw Abort(.serviceUnavailable, reason: "Could not start account linking")
+    }
+
+    req.session.data[Self.pendingLinkKey(state: ticket)] = sanitizedReturnTo(query.returnTo)
+    return req.redirect(
+      to: config.authorizeURL(state: ticket, redirectURI: config.linkCallbackURL))
+  }
+
+  /// Completes the account-linking round trip. Exchanges Auth0's code for the second identity's
+  /// token, forwards the ticket (carried through as `state`) and that token to `users-api`, and
+  /// redirects back into the app - success or conflict - without ever reading or writing the
+  /// original session's `currentUser`.
+  @Sendable
+  func linkCallback(req: Request) async throws -> Response {
+    struct CallbackQuery: Content {
+      let code: String?
+      let state: String?
+      let error: String?
+    }
+    let query = try req.query.decode(CallbackQuery.self)
+    let pendingKey = query.state.map(Self.pendingLinkKey(state:))
+    let pendingReturnTo = pendingKey.flatMap { req.session.data[$0] }
+    if let pendingKey { req.session.data[pendingKey] = nil }
+    let returnTo = pendingReturnTo ?? "/"
+
+    if let error = query.error {
+      req.logger.warning("Auth0 link callback returned an error: \(error)")
+      return linkErrorRedirect(req, to: returnTo, reason: .denied)
+    }
+    guard let code = query.code, let ticket = query.state, pendingReturnTo != nil else {
+      req.logger.warning("Auth0 link callback missing code or no matching pending link for state")
+      return linkErrorRedirect(req, to: returnTo, reason: .expired)
+    }
+
+    let config = req.application.auth0Config
+    struct TokenResponse: Content {
+      let accessToken: String
+      enum CodingKeys: String, CodingKey { case accessToken = "access_token" }
+    }
+    let tokenResponse: TokenResponse
+    do {
+      tokenResponse = try await req.client.post(
+        URI(string: "https://\(config.domain)/oauth/token"),
+        content: [
+          "grant_type": "authorization_code",
+          "client_id": config.clientID,
+          "client_secret": config.clientSecret,
+          "code": code,
+          "redirect_uri": config.linkCallbackURL,
+        ] as [String: String]
+      ).content.decode(TokenResponse.self)
+    } catch {
+      req.logger.error("Auth0 link token exchange failed: \(error)")
+      return linkErrorRedirect(req, to: returnTo, reason: .unavailable)
+    }
+
+    do {
+      _ = try await req.usersAPI.linkComplete(ticket: ticket, accessToken: tokenResponse.accessToken)
+    } catch is UsersAPIClient.LinkConflictError {
+      return linkErrorRedirect(req, to: returnTo, reason: .conflict)
+    } catch {
+      req.logger.error("users-api link/complete call failed: \(error)")
+      return linkErrorRedirect(req, to: returnTo, reason: .unavailable)
+    }
+
+    return req.redirect(to: returnTo)
   }
 }

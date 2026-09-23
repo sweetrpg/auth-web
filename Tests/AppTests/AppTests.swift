@@ -395,6 +395,155 @@ struct SessionUserTests {
   }
 }
 
+@Suite("AuthController.linkStart", .serialized)
+struct LinkStartTests {
+  @Test("linkStart requires an active session")
+  func requiresActiveSession() async throws {
+    try await withApp(configure: configure) { app in
+      try await app.testing().test(.GET, "auth/link/start") { res in
+        #expect(res.status == .unauthorized)
+      }
+    }
+  }
+
+  @Test("linkStart requires a session with a provisioned userID")
+  func requiresProvisionedUserID() async throws {
+    try await withApp(configure: configure) { app in
+      app.get("test-set-session-no-user-id") { req -> HTTPStatus in
+        req.currentUser = SessionUser(
+          sub: "auth0|abc", name: "Ada", email: nil, roles: [],
+          accessToken: "token", expiry: Date().addingTimeInterval(3600), userID: nil)
+        return .ok
+      }
+
+      var cookie = ""
+      try await app.testing().test(.GET, "test-set-session-no-user-id") { res in
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+      }
+      try await app.testing().test(
+        .GET, "auth/link/start", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.status == .unprocessableEntity)
+      }
+    }
+  }
+
+  @Test("a users-api link/start failure surfaces as a 503, not an uncaught error")
+  func linkStartFailureDegradesTo503() async throws {
+    try await withApp(configure: configure) { app in
+      // Auth0 must be configured, or linkStart 503s on that guard before ever reaching
+      // users-api - defeating the point of this test. 127.0.0.1:1 fails fast with
+      // connection-refused, matching the existing pattern used throughout this file for an
+      // unreachable users-api.
+      app.auth0Config = Auth0Config(
+        domain: "sweetrpg-dev.us.auth0.com", clientID: "client-id", clientSecret: "secret",
+        callbackURL: "http://localhost/auth/callback", audience: nil)
+      setenv("USERS_API_URL", "http://127.0.0.1:1", 1)
+      defer { unsetenv("USERS_API_URL") }
+
+      app.get("test-set-session-with-user-id") { req -> HTTPStatus in
+        req.currentUser = SessionUser(
+          sub: "auth0|abc", name: "Ada", email: nil, roles: [],
+          accessToken: "token", expiry: Date().addingTimeInterval(3600), userID: "user-1")
+        return .ok
+      }
+
+      var cookie = ""
+      try await app.testing().test(.GET, "test-set-session-with-user-id") { res in
+        cookie = String(res.headers.first(name: .setCookie)?.split(separator: ";").first ?? "")
+      }
+      try await app.testing().test(
+        .GET, "auth/link/start", headers: HTTPHeaders([("Cookie", cookie)])
+      ) { res in
+        #expect(res.status == .serviceUnavailable)
+      }
+    }
+  }
+}
+
+/// `UsersAPIClient.linkComplete` is exercised against a real, locally listening fake `users-api`
+/// rather than a mocked `Client`, matching this file's existing preference for real network
+/// behavior over mocks (see the connection-refused pattern used throughout). This is the same
+/// code path `AuthController.linkCallback` calls, so it stands in for "callback forwards ticket
+/// + token correctly" without needing to also mock Auth0's HTTPS token endpoint.
+@Suite("UsersAPIClient.linkComplete", .serialized)
+struct UsersAPIClientLinkCompleteTests {
+  private static let fakeUsersAPIPort = 18999
+
+  private func withFakeUsersAPI(
+    linkComplete: @Sendable @escaping (Request) async throws -> Response,
+    _ body: () async throws -> Void
+  ) async throws {
+    let fake = try await Application.make(.testing)
+    fake.http.server.configuration.port = Self.fakeUsersAPIPort
+    fake.post("internal", "identities", "link", "complete", use: linkComplete)
+    try fake.server.start()
+    setenv("USERS_API_URL", "http://127.0.0.1:\(Self.fakeUsersAPIPort)", 1)
+    do {
+      try await body()
+    } catch {
+      unsetenv("USERS_API_URL")
+      await fake.server.shutdown()
+      try await fake.asyncShutdown()
+      throw error
+    }
+    unsetenv("USERS_API_URL")
+    await fake.server.shutdown()
+    try await fake.asyncShutdown()
+  }
+
+  @Test("linkComplete forwards the ticket and the second identity's access token")
+  func forwardsTicketAndToken() async throws {
+    try await withApp(configure: configure) { app in
+      app.get("test-link-complete") { req -> String in
+        let result = try await req.usersAPI.linkComplete(
+          ticket: "ticket-abc", accessToken: "second-identity-token")
+        return result.userId
+      }
+
+      try await withFakeUsersAPI(linkComplete: { fakeReq in
+        struct Body: Content { let ticket: String }
+        let body = try fakeReq.content.decode(Body.self)
+        guard body.ticket == "ticket-abc",
+          fakeReq.headers.bearerAuthorization?.token == "second-identity-token"
+        else {
+          return Response(status: .badRequest)
+        }
+        let res = Response(status: .ok)
+        try res.content.encode(["userId": "user-1"])
+        return res
+      }) {
+        try await app.testing().test(.GET, "test-link-complete") { res in
+          #expect(res.status == .ok)
+          #expect(res.body.string == "user-1")
+        }
+      }
+    }
+  }
+
+  @Test("linkComplete surfaces a 409 as a conflict, distinct from a generic failure")
+  func conflictSurfacesDistinctlyFromGenericFailure() async throws {
+    try await withApp(configure: configure) { app in
+      app.get("test-link-complete-conflict") { req -> String in
+        do {
+          _ = try await req.usersAPI.linkComplete(ticket: "ticket-abc", accessToken: "token")
+          return "unexpected-success"
+        } catch is UsersAPIClient.LinkConflictError {
+          return "conflict"
+        } catch {
+          return "generic-failure"
+        }
+      }
+
+      try await withFakeUsersAPI(linkComplete: { _ in Response(status: .conflict) }) {
+        try await app.testing().test(.GET, "test-link-complete-conflict") { res in
+          #expect(res.body.string == "conflict")
+        }
+      }
+    }
+  }
+}
+
 @Suite("AuthController.provisionedUserID", .serialized)
 struct ProvisionedUserIDTests {
   @Test("a users-api provisioning failure degrades to nil rather than throwing")
