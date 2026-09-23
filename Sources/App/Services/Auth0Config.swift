@@ -42,18 +42,27 @@ struct Auth0Config {
     }.joined(separator: "&")
   }
 
-  func authorizeURL(state: String) -> String {
+  func authorizeURL(state: String, redirectURI: String? = nil) -> String {
     var components = URLComponents(string: "https://\(domain)/authorize")!
     var items: [(name: String, value: String)] = [
       ("response_type", "code"),
       ("client_id", clientID),
-      ("redirect_uri", callbackURL),
+      ("redirect_uri", redirectURI ?? callbackURL),
       ("scope", "openid profile email"),
       ("state", state),
     ]
     if let audience { items.append(("audience", audience)) }
     components.percentEncodedQuery = Self.percentEncodedQuery(items)
     return components.url!.absoluteString
+  }
+
+  /// Derived from `callbackURL` the same way `logoutURL` derives its own fixed completion URL -
+  /// see that method's doc comment. The account-linking round trip reuses the normal Auth0
+  /// application/authorize flow but must land on a different local route (so the original
+  /// session is never touched), so it needs its own entry alongside `/auth/callback` in Auth0's
+  /// Allowed Callback URLs.
+  var linkCallbackURL: String {
+    callbackURL.replacingOccurrences(of: "/auth/callback", with: "/auth/link/callback")
   }
 
   /// Auth0 only allows a `returnTo` that exactly matches a registered Allowed Logout URL, so the
