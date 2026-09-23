@@ -1,4 +1,15 @@
 
+## 0.13.0 - 2026-09-23
+
+### Added
+- Add link-start and link-callback routes
+
+
+### Fixed
+- Map users-api link error bodies by status code
+
+
+
 ## 0.12.4 - 2026-09-08
 
 ### Fixed
