@@ -294,6 +294,8 @@ struct AuthController: RouteCollection {
     let ticket: String
     do {
       ticket = try await req.usersAPI.linkStart(accessToken: user.accessToken).ticket
+    } catch is UsersAPIClient.LinkNoProfileError {
+      throw Abort(.notFound, reason: "This session has no account to link against")
     } catch {
       req.logger.error("users-api link/start call failed: \(error)")
       throw Abort(.serviceUnavailable, reason: "Could not start account linking")
@@ -353,9 +355,14 @@ struct AuthController: RouteCollection {
     }
 
     do {
-      _ = try await req.usersAPI.linkComplete(ticket: ticket, accessToken: tokenResponse.accessToken)
+      _ = try await req.usersAPI.linkComplete(
+        ticket: ticket, accessToken: tokenResponse.accessToken)
     } catch is UsersAPIClient.LinkConflictError {
       return linkErrorRedirect(req, to: returnTo, reason: .conflict)
+    } catch is UsersAPIClient.LinkTicketExpiredError {
+      return linkErrorRedirect(req, to: returnTo, reason: .expired)
+    } catch is UsersAPIClient.LinkNoProfileError {
+      return linkErrorRedirect(req, to: returnTo, reason: .denied)
     } catch {
       req.logger.error("users-api link/complete call failed: \(error)")
       return linkErrorRedirect(req, to: returnTo, reason: .unavailable)

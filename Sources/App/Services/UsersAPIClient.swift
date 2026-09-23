@@ -35,6 +35,21 @@ struct UsersAPIClient {
 
   struct LinkStartResponse: Content { let ticket: String }
 
+  /// The caller's Auth0 access token verified fine, but `users-api` has no `LoginProfile` for
+  /// that subject yet - there's no existing account to attach a second identity to. Maps to
+  /// `users-api`'s `404 {"error":"not_found"}` (see `server/identities.go`), distinct from a
+  /// generic transport/server failure.
+  struct LinkNoProfileError: Error {}
+
+  /// The link ticket used in a completion call was already used, or has aged past its 5-minute
+  /// TTL. Maps to `users-api`'s `410 {"error":"ticket_consumed"}`/`{"error":"ticket_expired"}`.
+  struct LinkTicketExpiredError: Error {}
+
+  /// The second identity's `LoginProfile` already belongs to a different `User` - a real,
+  /// expected outcome (see design.md's "Conflict rule: reject, never merge"), distinct from a
+  /// transport/server failure. Maps to `users-api`'s `409 {"error":"identity_conflict"}`.
+  struct LinkConflictError: Error {}
+
   /// Mints a short-lived, single-use link ticket for the caller's own account via `users-api`'s
   /// `POST /internal/identities/link/start`. Forwards the session's own Auth0 access token as a
   /// bearer credential, same convention as `provision(accessToken:...)` above - `users-api`
@@ -44,24 +59,33 @@ struct UsersAPIClient {
   /// `link-user-accounts`'s design.md, but that mechanism was removed from `users-api` after its
   /// other callers migrated off it - see the correction in that change's follow-up coordination.
   func linkStart(accessToken: String) async throws -> LinkStartResponse {
-    try await request.client.post(URI(string: "\(baseURL)/internal/identities/link/start")) { req in
+    let response = try await request.client.post(
+      URI(string: "\(baseURL)/internal/identities/link/start")
+    ) { req in
       req.headers.bearerAuthorization = BearerAuthorization(token: accessToken)
-    }.content.decode(LinkStartResponse.self)
+    }
+    switch response.status {
+    case .ok: return try response.content.decode(LinkStartResponse.self)
+    case .notFound: throw LinkNoProfileError()
+    default: throw Abort(response.status)
+    }
   }
 
   struct LinkCompleteRequest: Content { let ticket: String }
   struct LinkCompleteResponse: Content { let userId: String }
-
-  /// The second identity's `LoginProfile` already belongs to a different `User` - a real,
-  /// expected outcome (see design.md's "Conflict rule: reject, never merge"), distinct from a
-  /// transport/server failure.
-  struct LinkConflictError: Error {}
 
   /// Completes a pending link via `users-api`'s `POST /internal/identities/link/complete`,
   /// forwarding the second identity's own Auth0 access token as the bearer credential - both the
   /// call's own authentication and the token `users-api` verifies against `auth-api`'s
   /// `/authz/check` before resolving/attaching the profile, same single-token pattern as
   /// `linkStart` and `provision` above.
+  ///
+  /// Every non-2xx response from this endpoint carries a JSON `apiv.ErrorVO` body
+  /// (`{"error": "<code>", "message": "<string>"}`) - the status code alone is enough to
+  /// distinguish the outcomes this client cares about, so the body itself is never parsed. An
+  /// earlier version of this method treated any non-`.ok`/non-`.conflict` status as a decode
+  /// failure, which would have misclassified `.gone` (expired/consumed ticket) as a generic
+  /// "unavailable" failure instead of surfacing it distinctly.
   func linkComplete(ticket: String, accessToken: String) async throws -> LinkCompleteResponse {
     let response = try await request.client.post(
       URI(string: "\(baseURL)/internal/identities/link/complete")
@@ -69,9 +93,13 @@ struct UsersAPIClient {
       req.headers.bearerAuthorization = BearerAuthorization(token: accessToken)
       try req.content.encode(LinkCompleteRequest(ticket: ticket))
     }
-    if response.status == .conflict { throw LinkConflictError() }
-    guard response.status == .ok else { throw Abort(response.status) }
-    return try response.content.decode(LinkCompleteResponse.self)
+    switch response.status {
+    case .ok: return try response.content.decode(LinkCompleteResponse.self)
+    case .conflict: throw LinkConflictError()
+    case .gone: throw LinkTicketExpiredError()
+    case .notFound: throw LinkNoProfileError()
+    default: throw Abort(response.status)
+    }
   }
 }
 
