@@ -1,4 +1,12 @@
 
+## 0.13.1 - 2026-10-03
+
+### Fixed
+- Force Auth0's login prompt for the second identity
+- Merge suites that race on the shared USERS_API_URL env var
+
+
+
 ## 0.13.0 - 2026-09-23
 
 ### Added
