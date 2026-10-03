@@ -63,6 +63,19 @@ struct Auth0ConfigTests {
     #expect(url.contains("state=QqSBv%2Bzs88jhodF3G3QjDg%3D%3D"))
     #expect(!url.contains("state=QqSBv+zs88jhodF3G3QjDg"))
   }
+
+  @Test("authorizeURL omits prompt by default but includes it when passed")
+  func authorizeURLPrompt() throws {
+    let config = Auth0Config(
+      domain: "sweetrpg-dev.us.auth0.com",
+      clientID: "client-id",
+      clientSecret: "secret",
+      callbackURL: "https://dev.sweetrpg.com/auth/callback",
+      audience: nil
+    )
+    #expect(!config.authorizeURL(state: "s").contains("prompt="))
+    #expect(config.authorizeURL(state: "s", prompt: "login").contains("prompt=login"))
+  }
 }
 
 @Suite("App")

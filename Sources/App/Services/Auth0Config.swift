@@ -42,7 +42,7 @@ struct Auth0Config {
     }.joined(separator: "&")
   }
 
-  func authorizeURL(state: String, redirectURI: String? = nil) -> String {
+  func authorizeURL(state: String, redirectURI: String? = nil, prompt: String? = nil) -> String {
     var components = URLComponents(string: "https://\(domain)/authorize")!
     var items: [(name: String, value: String)] = [
       ("response_type", "code"),
@@ -52,6 +52,7 @@ struct Auth0Config {
       ("state", state),
     ]
     if let audience { items.append(("audience", audience)) }
+    if let prompt { items.append(("prompt", prompt)) }
     components.percentEncodedQuery = Self.percentEncodedQuery(items)
     return components.url!.absoluteString
   }
