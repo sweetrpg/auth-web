@@ -408,7 +408,14 @@ struct SessionUserTests {
   }
 }
 
-@Suite("AuthController.linkStart", .serialized)
+// LinkStartTests, UsersAPIClientLinkCompleteTests, and ProvisionedUserIDTests are merged into one
+// .serialized suite because each mutates the process-global USERS_API_URL env var via
+// setenv/unsetenv - .serialized only orders tests within a single suite, so as separate suites
+// they raced against each other under Swift Testing's cross-suite parallelism. That race let one
+// suite's fake-server URL leak into another suite's in-flight request mid-test (observed in CI as
+// a spurious 404: a linkStart call landed on a fake server with no matching route instead of the
+// connection-refused address it expected).
+@Suite("AuthController+UsersAPIClient tests sharing USERS_API_URL env mutation", .serialized)
 struct LinkStartTests {
   @Test("linkStart requires an active session")
   func requiresActiveSession() async throws {
@@ -472,15 +479,15 @@ struct LinkStartTests {
       }
     }
   }
-}
 
-/// `UsersAPIClient.linkComplete` is exercised against a real, locally listening fake `users-api`
-/// rather than a mocked `Client`, matching this file's existing preference for real network
-/// behavior over mocks (see the connection-refused pattern used throughout). This is the same
-/// code path `AuthController.linkCallback` calls, so it stands in for "callback forwards ticket
-/// + token correctly" without needing to also mock Auth0's HTTPS token endpoint.
-@Suite("UsersAPIClient.linkComplete", .serialized)
-struct UsersAPIClientLinkCompleteTests {
+  // MARK: - UsersAPIClient.linkComplete
+  //
+  // Exercised against a real, locally listening fake `users-api` rather than a mocked `Client`,
+  // matching this file's existing preference for real network behavior over mocks (see the
+  // connection-refused pattern used throughout). This is the same code path
+  // `AuthController.linkCallback` calls, so it stands in for "callback forwards ticket + token
+  // correctly" without needing to also mock Auth0's HTTPS token endpoint.
+
   private static let fakeUsersAPIPort = 18999
 
   private func withFakeUsersAPI(
@@ -555,10 +562,9 @@ struct UsersAPIClientLinkCompleteTests {
       }
     }
   }
-}
 
-@Suite("AuthController.provisionedUserID", .serialized)
-struct ProvisionedUserIDTests {
+  // MARK: - AuthController.provisionedUserID
+
   @Test("a users-api provisioning failure degrades to nil rather than throwing")
   func provisioningFailureDegradesToNil() async throws {
     try await withApp(configure: configure) { app in
