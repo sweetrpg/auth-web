@@ -302,8 +302,13 @@ struct AuthController: RouteCollection {
     }
 
     req.session.data[Self.pendingLinkKey(state: ticket)] = sanitizedReturnTo(query.returnTo)
+    // prompt=login forces Auth0's credentials screen even though the visitor already has an
+    // active SSO session for their first identity - without it, Auth0 silently re-authenticates
+    // that same session and the round trip completes before the visitor can enter a different
+    // identity's credentials.
     return req.redirect(
-      to: config.authorizeURL(state: ticket, redirectURI: config.linkCallbackURL))
+      to: config.authorizeURL(
+        state: ticket, redirectURI: config.linkCallbackURL, prompt: "login"))
   }
 
   /// Completes the account-linking round trip. Exchanges Auth0's code for the second identity's
