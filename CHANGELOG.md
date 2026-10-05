@@ -1,4 +1,11 @@
 
+## 0.13.2 - 2026-10-05
+
+### Fixed
+- Redirect with link=<outcome>, matching users-web's actual contract
+
+
+
 ## 0.13.1 - 2026-10-03
 
 ### Fixed
