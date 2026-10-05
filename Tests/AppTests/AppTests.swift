@@ -480,6 +480,26 @@ struct LinkStartTests {
     }
   }
 
+  // MARK: - AuthController.linkCallback error redirects
+
+  @Test("linkCallback redirects with link=error, not the stale link_error= query key")
+  func linkCallbackErrorUsesLinkQueryKey() async throws {
+    try await withApp(configure: configure) { app in
+      // Auth0 itself returning an `error` param is the earliest branch in linkCallback - reached
+      // before any pending-link session lookup or network call, so this needs no fake Auth0/
+      // users-api server to exercise. Regression test for the contract users-web's
+      // SettingsController actually reads (`req.query[String.self, at: "link"]`) - a prior
+      // version redirected with `?link_error=<reason>` instead, which users-web silently ignored
+      // (no banner shown, confirmed on dev with a real conflict).
+      try await app.testing().test(.GET, "auth/link/callback?error=access_denied") { res in
+        #expect(res.status == .seeOther)
+        let location = res.headers.first(name: .location) ?? ""
+        #expect(location.contains("link=error"))
+        #expect(!location.contains("link_error="))
+      }
+    }
+  }
+
   // MARK: - UsersAPIClient.linkComplete
   //
   // Exercised against a real, locally listening fake `users-api` rather than a mocked `Client`,

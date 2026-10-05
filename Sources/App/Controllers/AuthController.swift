@@ -247,10 +247,16 @@ struct AuthController: RouteCollection {
     case conflict
   }
 
+  /// Redirects with `?link=<outcome>`, the query key/value contract `users-web`'s
+  /// `SettingsController`/`settings.leaf` actually reads (`req.query[String.self, at: "link"]`,
+  /// recognizing only "conflict", "error", and "success"). `.conflict` is the one reason with
+  /// its own banner copy; every other reason collapses to the generic "error" banner - `users-web`
+  /// never surfaces the specific denied/expired/unavailable distinction to the visitor.
   private func linkErrorRedirect(_ req: Request, to returnTo: String, reason: LinkErrorReason)
     -> Response
   {
-    req.redirect(to: "\(returnTo)?link_error=\(reason.rawValue)")
+    let outcome = reason == .conflict ? "conflict" : "error"
+    return req.redirect(to: "\(returnTo)?link=\(outcome)")
   }
 
   /// Keyed by the link ticket itself (used as Auth0's `state`) rather than a separate locally
@@ -373,6 +379,6 @@ struct AuthController: RouteCollection {
       return linkErrorRedirect(req, to: returnTo, reason: .unavailable)
     }
 
-    return req.redirect(to: returnTo)
+    return req.redirect(to: "\(returnTo)?link=success")
   }
 }
