@@ -91,6 +91,32 @@ before the request reaches the app), this app's Ingress does **not** strip `/aut
 are already registered as `/auth/login`, `/auth/callback`, `/auth/logout`, matching the
 browser-facing path one-to-one. See `kubernetes/overlays/dev/ingress.yaml`.
 
+### Terms acceptance gate
+
+Implements `sweetrpg/platform`'s `publish-terms-of-service` change (terms-acceptance). After the
+Auth0 callback, `TermsController.holdLoginIfNeeded` reads the user's `terms_accepted` record from
+`users-api` with the user's own access token. If the record is missing, or older than
+`REQUIRED_TERMS_VERSION` while `TERMS_VERSION_MATERIAL` is `true`, the login is held: the session
+gets no `user` entry (so no other frontend sees a usable session) and the visitor goes to
+`/auth/terms`, which links `/terms` and `/privacy` (public site root, new tab), and requires an
+unchecked-by-default checkbox. Accepting writes the version through `users-api`, then completes
+login; declining destroys the session, goes through Auth0 logout, and ends on
+`/auth/terms/declined`.
+
+- **Settings**: `REQUIRED_TERMS_VERSION` (dotted numeric, e.g. `1.0`) and `TERMS_VERSION_MATERIAL`
+  (`true`/`false`) live in the overlay configmaps and `.env.example`. A malformed value fails
+  startup; an unset `REQUIRED_TERMS_VERSION` leaves the gate with nothing to enforce.
+- **Feature flag `terms-acceptance-gate`** (default off): with it off nobody is redirected and
+  `users-api` is not called. Swift has no server-side OpenFeature SDK, so `OFREPFeatureFlags`
+  posts to the `flagd` sidecar's OFREP endpoint (`FLAGD_OFREP_URL`, default
+  `http://localhost:8016`) with a 500 ms timeout and falls back to the default on any failure.
+  The pod already carries the `openfeature.dev/*` annotations; the flag itself must be defined in
+  the `sweetrpg-system/auth-web` flag source.
+- **Failure modes**: if `users-api` is unreachable when checking the record, the user is let in
+  and an ERROR is logged. If it fails when recording an acceptance, the page re-renders with an
+  error and the user stays held.
+- The pages are plain HTML strings (`TermsPage`), like `MaintenancePage`; this app has no Leaf.
+
 ### Localization
 
 Implements sweetrpg/platform's openspec change `full-localization-web-apps`.

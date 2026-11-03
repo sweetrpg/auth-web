@@ -28,6 +28,8 @@ public func configure(_ app: Application) async throws {
   // whose own work should appear as a child span of the request.
   app.middleware.use(TracingMiddleware())
 
+  MetricsSetup.bootstrap(app)
+
   app.middleware.use(SentryMiddleware())
 
   // Shared cookie name, unlike every other frontend's own per-app session - this app is the sole
@@ -81,6 +83,10 @@ public func configure(_ app: Application) async throws {
   // Gates only /auth/login - see MaintenanceModeMiddleware's doc comment for why the callback
   // and logout routes are deliberately excluded.
   app.middleware.use(MaintenanceModeMiddleware())
+
+  // A malformed REQUIRED_TERMS_VERSION/TERMS_VERSION_MATERIAL fails startup; unset leaves the
+  // terms-acceptance gate with nothing to enforce.
+  app.termsPolicy = try TermsPolicy.fromEnvironment()
 
   // Load Resources/Localizations/<code>.json tables - see I18n's doc comment.
   I18n.load()

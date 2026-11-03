@@ -21,6 +21,10 @@ data:
   # support/config/K8s/traefik/overlays/minikube), same convention as the dev overlay's
   # dev.sweetrpg.com.
   AUTH0_CALLBACK_URL: https://sweetrpg.local/auth/callback
+  # Terms-acceptance gate (publish-terms-of-service): publishing a new terms version changes these
+  # two values, not code. The gate itself is behind the terms-acceptance-gate feature flag.
+  REQUIRED_TERMS_VERSION: "1.0"
+  TERMS_VERSION_MATERIAL: "false"
   LOG_LEVEL: info
   ROOT_URL: https://sweetrpg.local/
   ASSETS_URL: https://sweetrpg.local/assets
