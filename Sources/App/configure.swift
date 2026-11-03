@@ -28,6 +28,8 @@ public func configure(_ app: Application) async throws {
   // whose own work should appear as a child span of the request.
   app.middleware.use(TracingMiddleware())
 
+  MetricsSetup.bootstrap(app)
+
   app.middleware.use(SentryMiddleware())
 
   // Shared cookie name, unlike every other frontend's own per-app session - this app is the sole

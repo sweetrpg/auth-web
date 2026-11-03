@@ -24,6 +24,8 @@ let package = Package(
         // 🌐 Framework-agnostic localization - see openspec/changes/full-localization-web-apps.
         .package(url: "https://github.com/miroslavkovac/Lingo.git", from: "4.0.0"),
         .package(url: "https://github.com/swift-otel/swift-otel.git", from: "0.8.0"),
+        // 📊 Prometheus metrics, exposed at /metrics.
+        .package(url: "https://github.com/swift-server/swift-prometheus.git", from: "2.4.1"),
     ],
     targets: [
         .executableTarget(
@@ -37,6 +39,7 @@ let package = Package(
                 .product(name: "OTel", package: "swift-otel"),
                 .product(name: "OTLPGRPC", package: "swift-otel"),
                 .product(name: "Lingo", package: "Lingo"),
+                .product(name: "Prometheus", package: "swift-prometheus"),
             ],
             resources: [
                 .copy("Resources/Localizations")
