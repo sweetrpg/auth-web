@@ -183,10 +183,15 @@ struct AuthController: RouteCollection {
       req: req, accessToken: tokenResponse.accessToken, name: name, email: email)
 
     let ttl = tokenResponse.expiresIn.map(TimeInterval.init) ?? fallbackTokenLifetime
-    req.currentUser = SessionUser(
+    let user = SessionUser(
       sub: sub, name: name, email: email, roles: authz.roles ?? [],
       accessToken: tokenResponse.accessToken, expiry: Date().addingTimeInterval(ttl),
       userID: userID)
+    if let hold = await TermsController.holdLoginIfNeeded(req: req, user: user, returnTo: returnTo)
+    {
+      return hold
+    }
+    req.currentUser = user
     return req.redirect(to: returnTo)
   }
 

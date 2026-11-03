@@ -82,6 +82,10 @@ public func configure(_ app: Application) async throws {
   // and logout routes are deliberately excluded.
   app.middleware.use(MaintenanceModeMiddleware())
 
+  // A malformed REQUIRED_TERMS_VERSION/TERMS_VERSION_MATERIAL fails startup; unset leaves the
+  // terms-acceptance gate with nothing to enforce.
+  app.termsPolicy = try TermsPolicy.fromEnvironment()
+
   // Load Resources/Localizations/<code>.json tables - see I18n's doc comment.
   I18n.load()
 
