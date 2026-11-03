@@ -2,5 +2,18 @@
   "maintenance.title_suffix": "SweetRPG",
   "maintenance.since_prefix": "Since ",
   "maintenance.since_suffix": "",
-  "maintenance.window_separator": "&ndash;"
+  "maintenance.window_separator": "&ndash;",
+  "terms.title": "Accept the Terms of Service",
+  "terms.title_suffix": "SweetRPG",
+  "terms.intro": "Please review the Terms of Service and Privacy Policy before you continue.",
+  "terms.read_terms": "Read the Terms of Service",
+  "terms.read_privacy": "Read the Privacy Policy",
+  "terms.checkbox_label": "I have read and accept the Terms of Service and Privacy Policy.",
+  "terms.submit": "Accept and continue",
+  "terms.decline": "Decline and sign out",
+  "terms.error_unchecked": "You must check the box to accept the terms before continuing.",
+  "terms.error_record_failed": "We could not record your acceptance. Please try again.",
+  "terms.declined_title": "You have been signed out",
+  "terms.declined_body": "You need to accept the Terms of Service to use SweetRPG. You have not been signed in.",
+  "terms.home_link": "Return to the home page"
 }
