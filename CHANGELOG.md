@@ -1,4 +1,12 @@
 
+## 0.14.0 - 2026-11-03
+
+### Added
+- Hold login until the current terms are accepted
+- Serve Prometheus metrics at /metrics
+
+
+
 ## 0.13.2 - 2026-10-05
 
 ### Fixed
