@@ -6,7 +6,10 @@ import Foundation
 /// Package.swift's dependencies comment) - so this is a small dependency-free HTML string rather
 /// than pulling in Leaf for a single static page.
 enum MaintenancePage {
-  static func render(_ mode: MaintenanceMode, l10n: [String: String] = [:]) -> String {
+  static func render(
+    _ mode: MaintenanceMode, l10n: [String: String] = [:], footer: String = "",
+    sharedURL: String = ""
+  ) -> String {
     let windowLine = formattedWindow(startsAt: mode.startsAt, endsAt: mode.endsAt, l10n: l10n)
     return """
       <!DOCTYPE html>
@@ -14,6 +17,7 @@ enum MaintenancePage {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        \(sharedURL.isEmpty ? "" : "<link rel=\"stylesheet\" href=\"\(escape(sharedURL))/static/css/main.css\" />")
         <title>\(escape(mode.label)) - SweetRPG</title>
         <style>
           :root { color-scheme: light dark; }
@@ -39,6 +43,7 @@ enum MaintenancePage {
         <h1>\(escape(mode.label))</h1>
         <p>\(escape(mode.description))</p>
         \(windowLine.map { "<p class=\"window\">\($0)</p>" } ?? "")
+        \(footer)
       </body>
       </html>
       """
