@@ -75,7 +75,10 @@ struct TermsController: RouteCollection {
     guard pending(req) != nil, let csrf = req.session.data[Self.csrfKey] else {
       return req.redirect(to: "/")
     }
-    return html(TermsPage.renderAccept(csrf: csrf, errorKey: nil, l10n: req.l10n))
+    return html(
+      TermsPage.renderAccept(
+        csrf: csrf, errorKey: nil, l10n: req.l10n, footer: req.siteFooterHTML,
+        sharedURL: req.sharedURL))
   }
 
   private struct Form: Content {
@@ -92,7 +95,9 @@ struct TermsController: RouteCollection {
     }
     guard form.accept == "yes" else {
       return html(
-        TermsPage.renderAccept(csrf: csrf, errorKey: "terms.error_unchecked", l10n: req.l10n),
+        TermsPage.renderAccept(
+          csrf: csrf, errorKey: "terms.error_unchecked", l10n: req.l10n,
+          footer: req.siteFooterHTML, sharedURL: req.sharedURL),
         status: .unprocessableEntity)
     }
     do {
@@ -101,7 +106,9 @@ struct TermsController: RouteCollection {
     } catch {
       req.logger.error("users-api terms acceptance write failed: \(error)")
       return html(
-        TermsPage.renderAccept(csrf: csrf, errorKey: "terms.error_record_failed", l10n: req.l10n),
+        TermsPage.renderAccept(
+          csrf: csrf, errorKey: "terms.error_record_failed", l10n: req.l10n,
+          footer: req.siteFooterHTML, sharedURL: req.sharedURL),
         status: .serviceUnavailable)
     }
     req.session.data[Self.pendingKey] = nil
@@ -124,7 +131,9 @@ struct TermsController: RouteCollection {
 
   @Sendable
   func declined(req: Request) async throws -> Response {
-    html(TermsPage.renderDeclined(l10n: req.l10n))
+    html(
+      TermsPage.renderDeclined(
+        l10n: req.l10n, footer: req.siteFooterHTML, sharedURL: req.sharedURL))
   }
 }
 
