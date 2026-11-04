@@ -1,4 +1,11 @@
 
+## 0.15.0 - 2026-11-04
+
+### Added
+- Add the standard three-line footer to the terms and maintenance pages
+
+
+
 ## 0.14.0 - 2026-11-03
 
 ### Added
