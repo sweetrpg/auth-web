@@ -15,5 +15,8 @@
   "terms.error_record_failed": "We could not record your acceptance. Please try again.",
   "terms.declined_title": "You have been signed out",
   "terms.declined_body": "You need to accept the Terms of Service to use SweetRPG. You have not been signed in.",
-  "terms.home_link": "Return to the home page"
+  "terms.home_link": "Return to the home page",
+  "footer.terms": "Terms of Service",
+  "footer.privacy": "Privacy Policy",
+  "footer.support": "Support"
 }
