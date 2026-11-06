@@ -161,7 +161,7 @@ struct AuthController: RouteCollection {
       req.logger.error("Could not decode Auth0 ID token claims")
       return errorRedirect(req, to: returnTo, reason: .unavailable)
     }
-    let name = (claims["name"] as? String) ?? (claims["email"] as? String) ?? "User"
+    let name = displayName(from: claims)
     let email = claims["email"] as? String
 
     // Server-side verified roles, not a local unverified decode - see design.md's "Server-side
