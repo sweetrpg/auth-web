@@ -1,4 +1,11 @@
 
+## 0.15.1 - 2026-11-06
+
+### Fixed
+- Seed a new user's name from the nickname claim before the email
+
+
+
 ## 0.15.0 - 2026-11-04
 
 ### Added
