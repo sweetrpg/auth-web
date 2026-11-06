@@ -19,3 +19,15 @@ func decodeUnverifiedJWTPayload(_ jwt: String) -> [String: Any]? {
   else { return nil }
   return json
 }
+
+/// The display name to seed a new user with: the `name` claim, else the `nickname` claim (a GitHub
+/// login with no public name still has one), else the email, else a placeholder. Empty strings
+/// count as absent.
+func displayName(from claims: [String: Any]) -> String {
+  for key in ["name", "nickname", "email"] {
+    if let value = claims[key] as? String, !value.trimmingCharacters(in: .whitespaces).isEmpty {
+      return value
+    }
+  }
+  return "User"
+}
