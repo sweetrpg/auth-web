@@ -1,4 +1,15 @@
 
+## 0.15.2 - 2026-11-27
+
+### Documentation
+- Add the feature work checkpoint pointer
+
+
+### Fixed
+- Land on the suite root after logout
+
+
+
 ## 0.15.1 - 2026-11-06
 
 ### Fixed
