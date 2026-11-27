@@ -72,7 +72,13 @@ struct AuthController: RouteCollection {
   /// Only a same-host, relative path is accepted - an absolute URL in `return_to` would let this
   /// endpoint be used as an open redirect.
   private func sanitizedReturnTo(_ raw: String?) -> String {
-    guard let raw, raw.hasPrefix("/"), !raw.hasPrefix("//") else { return "/" }
+    // Browsers read `\` as `/` and strip tabs/newlines, turning `/\host` or `/<tab>/host` into
+    // `//host`.
+    guard let raw, raw.hasPrefix("/"), !raw.hasPrefix("//"),
+      !raw.unicodeScalars.contains(where: {
+        $0 == "\\" || $0.properties.generalCategory == .control
+      })
+    else { return "/" }
     return raw
   }
 
@@ -213,25 +219,21 @@ struct AuthController: RouteCollection {
     }
   }
 
+  /// Deliberately ignores the `return_to` frontends send: landing a signed-out browser back on a
+  /// gated page redirects it to login with that page as `return_to`, so whoever signs in next
+  /// inherits the previous user's destination.
   @Sendable
   func logout(req: Request) async throws -> Response {
-    struct LogoutQuery: Content {
-      let returnTo: String?
-      enum CodingKeys: String, CodingKey { case returnTo = "return_to" }
-    }
-    let query = try req.query.decode(LogoutQuery.self)
-    let returnTo = sanitizedReturnTo(query.returnTo)
-
     let config = req.application.auth0Config
     req.currentUser = nil
     req.session.destroy()
     return config.isConfigured
-      ? req.redirect(to: config.logoutURL(returnTo: returnTo)) : req.redirect(to: returnTo)
+      ? req.redirect(to: config.logoutURL(returnTo: "/")) : req.redirect(to: "/")
   }
 
   /// Auth0's own `returnTo` is pinned to this fixed URL (see `Auth0Config.logoutURL`) since it
   /// can't be pre-registered for every possible destination - this route performs the actual
-  /// redirect to the visitor's destination once Auth0's logout round trip completes.
+  /// redirect (suite root, or the terms-declined page) once Auth0's logout round trip completes.
   @Sendable
   func logoutComplete(req: Request) async throws -> Response {
     struct LogoutCompleteQuery: Content {
