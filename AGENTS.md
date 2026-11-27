@@ -51,7 +51,7 @@ here's what has to exist for login to work:
   `https://sweetrpg.local/auth/logout-complete` (see `Auth0Config.logoutURL(returnTo:)`, which
   derives this from `AUTH0_CALLBACK_URL` by swapping `/auth/callback` for
   `/auth/logout-complete`). Auth0 only accepts a `returnTo` that exactly matches one of these
-  registered URLs, so the visitor's actual post-logout destination can't be registered directly -
+  registered URLs, so the post-logout destination can't be registered directly -
   it travels as `/auth/logout-complete`'s own `return_to` query parameter instead, which this app
   validates and redirects to itself (see `openspec/changes/auth-web-logout-preserve-return-path`
   in `sweetrpg/platform`). This is a separate list from Allowed Callback URLs in the Auth0
@@ -83,6 +83,12 @@ here's what has to exist for login to work:
 None of the actual credential values belong in this file or any committed doc - Akeyless is the
 source of truth; this section documents the *shape* of what must exist there and in the Auth0
 dashboard, not the values themselves.
+
+### Logout destination
+
+`POST /auth/logout` always lands on the suite root and ignores `return_to`. Honoring it sent the
+next user to sign in back to the previous user's app. Only the terms gate's decline path sets a
+different `/auth/logout-complete` destination.
 
 ### Routing
 

@@ -253,20 +253,14 @@ struct AppTests {
     }
   }
 
-  @Test("logout with a valid relative return path preserves it through logout-complete")
-  func logoutPreservesValidReturnPath() async throws {
+  @Test("logout-complete redirects to a valid relative return path")
+  func logoutCompleteHonorsValidReturnPath() async throws {
     try await withApp(configure: configure) { app in
-      try await app.testing().test(.POST, "auth/logout?return_to=%2Fcatalog%2Fbrowse") { res in
-        // Auth0 isn't configured in this test app, so `logout` falls back to a direct redirect
-        // rather than round-tripping through Auth0 - still enough to prove `return_to` was read
-        // and sanitized correctly.
+      try await app.testing().test(
+        .GET, "auth/logout-complete?return_to=%2Fauth%2Fterms%2Fdeclined"
+      ) { res in
         #expect(res.status == .seeOther)
-        #expect(res.headers.first(name: .location) == "/catalog/browse")
-      }
-      try await app.testing().test(.GET, "auth/logout-complete?return_to=%2Fcatalog%2Fbrowse") {
-        res in
-        #expect(res.status == .seeOther)
-        #expect(res.headers.first(name: .location) == "/catalog/browse")
+        #expect(res.headers.first(name: .location) == "/auth/terms/declined")
       }
     }
   }
